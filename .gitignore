@@ -8,7 +8,7 @@
 *.test
 
 # large generated test data
-/input/large.csv
+/input/large.*
 
 # JetBrains: keep project files, ignore personal workspace state
 .idea/workspace.xml
