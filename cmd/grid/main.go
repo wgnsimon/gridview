@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"unicode/utf8"
 
 	"golang.org/x/term"
@@ -14,6 +15,7 @@ import (
 	"gridview/internal/output"
 	"gridview/internal/reader"
 	"gridview/internal/table"
+	"gridview/internal/tui"
 )
 
 func main() {
@@ -46,9 +48,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	}
 	defer rows.Close()
 	if cfg.view {
-		return errors.New("-view is not implemented yet")
+		term, restore, err := tui.OpenTerminal()
+		if err != nil {
+			return err
+		}
+		defer restore()
+		return tui.Run(rows, title(cfg.path), term)
 	}
 	return output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout)}.Show(rows)
+}
+
+func title(path string) string {
+	if path == "" || path == "-" {
+		return "stdin"
+	}
+	return filepath.Base(path)
 }
 
 func open(cfg config, stdin io.Reader) (table.Rows, error) {
