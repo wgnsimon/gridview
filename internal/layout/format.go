@@ -54,7 +54,7 @@ func (f *Formatter) AppendRule(dst []byte) []byte {
 		if i > 0 {
 			dst = append(dst, sep...)
 		}
-		dst = appendRepeat(dst, '-', c.Width)
+		dst = appendRepeat(dst, dashes, c.Width)
 	}
 	return dst
 }
@@ -72,17 +72,23 @@ func ruleSep(sep string) string {
 }
 
 func appendCell(dst []byte, s string, c Column, cut, pad bool) []byte {
-	sw := Width(s)
+	sw, clean := measure(s)
 	if sw > c.Width && cut {
 		return appendCut(dst, s, c.Width)
 	}
 	gap := c.Width - sw
 	if c.Right {
-		dst = appendRepeat(dst, ' ', gap)
+		dst = appendRepeat(dst, spaces, gap)
 	}
-	dst = appendClean(dst, s)
+	if clean {
+		dst = append(dst, s...)
+	} else {
+		for _, r := range s {
+			dst = appendRune(dst, r)
+		}
+	}
 	if !c.Right && pad {
-		dst = appendRepeat(dst, ' ', gap)
+		dst = appendRepeat(dst, spaces, gap)
 	}
 	return dst
 }
@@ -101,19 +107,7 @@ func appendCut(dst []byte, s string, w int) []byte {
 		used += rw
 	}
 	dst = append(dst, ellipsis...)
-	return appendRepeat(dst, ' ', w-1-used)
-}
-
-func appendClean(dst []byte, s string) []byte {
-	for i := 0; i < len(s); i++ {
-		if s[i] < ' ' || s[i] == 0x7F {
-			for _, r := range s {
-				dst = appendRune(dst, r)
-			}
-			return dst
-		}
-	}
-	return append(dst, s...)
+	return appendRepeat(dst, spaces, w-1-used)
 }
 
 func appendRune(dst []byte, r rune) []byte {
@@ -128,10 +122,12 @@ func appendRune(dst []byte, r rune) []byte {
 	return utf8.AppendRune(dst, r)
 }
 
-var repeats = map[byte]string{' ': strings.Repeat(" ", 256), '-': strings.Repeat("-", 256)}
+var (
+	spaces = strings.Repeat(" ", 256)
+	dashes = strings.Repeat("-", 256)
+)
 
-func appendRepeat(dst []byte, b byte, n int) []byte {
-	block := repeats[b]
+func appendRepeat(dst []byte, block string, n int) []byte {
 	for n > 0 {
 		k := min(n, len(block))
 		dst = append(dst, block[:k]...)

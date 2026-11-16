@@ -26,6 +26,24 @@ func wideWidth(s string) int {
 	return n
 }
 
+// measure returns the width of s and whether it is free of control characters.
+func measure(s string) (int, bool) {
+	for i := 0; i < len(s); i++ {
+		if s[i]-' ' < 0x7F-' ' {
+			continue
+		}
+		clean := true
+		for _, c := range []byte(s[i:]) {
+			if c < ' ' || c == 0x7F {
+				clean = false
+				break
+			}
+		}
+		return Width(s), clean
+	}
+	return len(s), true
+}
+
 // RuneWidth returns 0, 1 or 2 terminal columns for r.
 func RuneWidth(r rune) int {
 	switch {
