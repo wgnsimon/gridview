@@ -3,10 +3,10 @@ package xls
 
 import (
 	"encoding/binary"
-	"slices"
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"unicode/utf16"
 )
