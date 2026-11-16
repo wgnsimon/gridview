@@ -186,3 +186,7 @@ On error, `grid` writes a message prefixed with `grid:` to stderr and exits with
 ## Contributing
 
 Code structure and tests are described in [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## License
+
+[MIT](LICENSE)
