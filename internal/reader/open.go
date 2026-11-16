@@ -2,6 +2,7 @@
 package reader
 
 import (
+	"bufio"
 	"io"
 	"os"
 
@@ -30,11 +31,16 @@ func Open(path string, opt Options) (table.Rows, error) {
 
 // OpenReader reads a table from r.
 func OpenReader(r io.Reader, opt Options) (table.Rows, error) {
-	delim := opt.Delimiter
+	return openCSV(bufio.NewReaderSize(r, peekSize), opt.Delimiter)
+}
+
+func openCSV(br *bufio.Reader, delim rune) (table.Rows, error) {
+	text := utf8Text(br)
 	if delim == 0 {
-		delim = ','
+		sample, err := text.Peek(peekSize)
+		delim = sniffDelimiter(sample, err != nil)
 	}
-	return newCSV(r, delim)
+	return newCSV(text, delim)
 }
 
 type withCloser struct {
