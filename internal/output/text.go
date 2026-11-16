@@ -14,6 +14,7 @@ const (
 	sampleSize = 1000
 	flushSize  = 64 << 10
 	sep        = " | "
+	boxSep     = " │ "
 	// AskAbove is the row count above which Show asks Confirm first.
 	AskAbove = 250
 )
@@ -24,6 +25,8 @@ type Text struct {
 	W io.Writer
 	// MaxWidth limits the line width, 0 means unlimited.
 	MaxWidth int
+	// Border draws the table in a box-drawing frame instead of ASCII lines.
+	Border bool
 	// Confirm, if set, is asked before printing more than AskAbove rows.
 	// rows is the number read so far, more reports that the input goes on.
 	// Show prints nothing when it returns false.
@@ -45,14 +48,23 @@ func (t Text) Show(rows table.Rows) error {
 		return nil
 	}
 	cols := m.Columns()
+	f := layout.Formatter{Sep: sep, Cut: t.MaxWidth > 0, Border: t.Border}
+	limit := t.MaxWidth
+	if t.Border {
+		f.Sep = boxSep
+		limit -= layout.BorderWidth
+	}
 	hidden := 0
 	if t.MaxWidth > 0 {
-		n := layout.Fit(cols, t.MaxWidth, len(sep))
+		n := layout.Fit(cols, max(limit, 1), layout.Width(f.Sep))
 		hidden = len(cols) - n
 		cols = cols[:n]
 	}
-	f := layout.Formatter{Cols: cols, Sep: sep, Cut: t.MaxWidth > 0}
+	f.Cols = cols
 	buf := make([]byte, 0, flushSize+4096)
+	if t.Border {
+		buf = append(f.AppendTop(buf), '\n')
+	}
 	buf = append(f.AppendRow(buf, header), '\n')
 	buf = append(f.AppendRule(buf), '\n')
 	for _, row := range sample {
@@ -73,6 +85,9 @@ func (t Text) Show(rows table.Rows) error {
 			}
 			buf = buf[:0]
 		}
+	}
+	if t.Border {
+		buf = append(f.AppendBottom(buf), '\n')
 	}
 	if hidden > 0 {
 		buf = fmt.Appendf(buf, "(%d more columns, use a wider terminal or -view)\n", hidden)

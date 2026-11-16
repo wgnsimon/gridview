@@ -41,8 +41,10 @@ type model struct {
 	vis     []layout.Column
 }
 
+// page is the number of data rows on screen, below header and rule
+// and above the status line.
 func (m *model) page() int {
-	return max(1, m.height-2)
+	return max(1, m.height-3)
 }
 
 // handle applies a key and reports whether to quit.

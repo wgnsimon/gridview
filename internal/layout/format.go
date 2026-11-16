@@ -17,7 +17,13 @@ type Formatter struct {
 	Sep  string
 	// Cut shortens cells wider than their column with an ellipsis.
 	Cut bool
+	// Border draws a box-drawing frame around rows and rules.
+	// Sep should then be " │ ".
+	Border bool
 }
+
+// BorderWidth is the width the frame adds to a line.
+const BorderWidth = 4
 
 const ellipsis = "…"
 
@@ -28,6 +34,9 @@ func (f *Formatter) AppendRow(dst []byte, row []string) []byte {
 
 // AppendMarked is AppendRow with column mark wrapped in the on and off sequences.
 func (f *Formatter) AppendMarked(dst []byte, row []string, mark int, on, off string) []byte {
+	if f.Border {
+		dst = append(dst, "│ "...)
+	}
 	for i, c := range f.Cols {
 		if i > 0 {
 			dst = append(dst, f.Sep...)
@@ -39,33 +48,66 @@ func (f *Formatter) AppendMarked(dst []byte, row []string, mark int, on, off str
 		if i == mark {
 			dst = append(dst, on...)
 		}
-		dst = appendCell(dst, s, c, f.Cut, i < len(f.Cols)-1)
+		dst = appendCell(dst, s, c, f.Cut, f.Border || i < len(f.Cols)-1)
 		if i == mark {
 			dst = append(dst, off...)
 		}
 	}
-	return dst
-}
-
-// AppendRule appends a separator line like "---+-----".
-func (f *Formatter) AppendRule(dst []byte) []byte {
-	sep := ruleSep(f.Sep)
-	for i, c := range f.Cols {
-		if i > 0 {
-			dst = append(dst, sep...)
-		}
-		dst = appendRepeat(dst, dashes, c.Width)
+	if f.Border {
+		dst = append(dst, " │"...)
 	}
 	return dst
 }
 
+// AppendRule appends the line under the header: "---+-----" for an ASCII
+// Sep, "────┼─────" for " │ ", and "├────┼─────┤" with Border.
+func (f *Formatter) AppendRule(dst []byte) []byte {
+	if f.Border {
+		return f.appendLine(dst, "├─", "─┼─", "─┤")
+	}
+	return f.appendLine(dst, "", ruleSep(f.Sep), "")
+}
+
+// AppendTop appends the top of the frame, "┌────┬─────┐".
+func (f *Formatter) AppendTop(dst []byte) []byte {
+	return f.appendLine(dst, "┌─", "─┬─", "─┐")
+}
+
+// AppendBottom appends the bottom of the frame, "└────┴─────┘".
+func (f *Formatter) AppendBottom(dst []byte) []byte {
+	return f.appendLine(dst, "└─", "─┴─", "─┘")
+}
+
+func (f *Formatter) appendLine(dst []byte, left, cross, right string) []byte {
+	fill := dashes
+	if f.Border || strings.Contains(f.Sep, "│") {
+		fill = lines
+	}
+	dst = append(dst, left...)
+	for i, c := range f.Cols {
+		if i > 0 {
+			dst = append(dst, cross...)
+		}
+		dst = appendRepeat(dst, fill, c.Width)
+	}
+	return append(dst, right...)
+}
+
+// ruleSep turns a separator like " | " into "-+-" and " │ " into "─┼─".
 func ruleSep(sep string) string {
-	b := []byte(sep)
-	for i, c := range b {
-		if c == ' ' {
-			b[i] = '-'
-		} else {
-			b[i] = '+'
+	b := make([]byte, 0, len(sep)*3)
+	for _, r := range sep {
+		switch r {
+		case ' ':
+			if strings.Contains(sep, "│") {
+				b = append(b, "─"...)
+			} else {
+				b = append(b, '-')
+			}
+		case '│':
+			b = append(b, "┼"...)
+		default:
+			b = append(b, '+')
 		}
 	}
 	return string(b)
@@ -128,12 +170,18 @@ func appendRune(dst []byte, r rune) []byte {
 var (
 	spaces = strings.Repeat(" ", 256)
 	dashes = strings.Repeat("-", 256)
+	lines  = strings.Repeat("─", 256)
 )
 
+// appendRepeat appends n copies of the single repeated character in block.
 func appendRepeat(dst []byte, block string, n int) []byte {
+	size := 1
+	if block[0] >= utf8.RuneSelf {
+		_, size = utf8.DecodeRuneInString(block)
+	}
 	for n > 0 {
-		k := min(n, len(block))
-		dst = append(dst, block[:k]...)
+		k := min(n, len(block)/size)
+		dst = append(dst, block[:k*size]...)
 		n -= k
 	}
 	return dst

@@ -55,9 +55,9 @@ func TestNavigation(t *testing.T) {
 	}{
 		{runes("jjj"), 3, 0, 0},
 		{runes("k"), 2, 0, 0},
-		{[]Key{{Code: KeyPgDn}}, 10, 8, 0},
-		{runes("G"), 99, 92, 0},
-		{[]Key{{Code: KeyDown}}, 99, 92, 0},
+		{[]Key{{Code: KeyPgDn}}, 9, 7, 0},
+		{runes("G"), 99, 93, 0},
+		{[]Key{{Code: KeyDown}}, 99, 93, 0},
 		{runes("g"), 0, 0, 0},
 		{[]Key{{Code: KeyUp}}, 0, 0, 0},
 		{runes("lll"), 0, 0, 3},
@@ -172,28 +172,32 @@ func TestRender(t *testing.T) {
 		keys          string
 		want          []string
 	}{
-		{"cursor row and column", 3, 3, 30, 6, "jl", []string{
+		{"cursor row and column", 3, 3, 30, 7, "jl", []string{
 			"  │ col0 │ col1 │ col2",
+			"──┼──────┼──────┼─────",
 			"1 │ r0c0 │ r0c1 │ r0c2",
 			"2 │ r1c0 │ r1c1 │ r1c2",
 			"3 │ r2c0 │ r2c1 │ r2c2",
 			"",
 			" t.csv   row 2/3   col 2/3 co…",
 		}},
-		{"cuts last column", 1, 3, 20, 4, "", []string{
+		{"cuts last column", 1, 3, 20, 5, "", []string{
 			"  │ col0 │ col1 │ c…",
+			"──┼──────┼──────┼───",
 			"1 │ r0c0 │ r0c1 │ r…",
 			"",
 			" t.csv   row 1/1   …",
 		}},
-		{"scrolled right", 2, 6, 20, 4, "$", []string{
+		{"scrolled right", 2, 6, 20, 5, "$", []string{
 			"  │ col4 │ col5",
+			"──┼──────┼─────",
 			"1 │ r0c4 │ r0c5",
 			"2 │ r1c4 │ r1c5",
 			" t.csv   row 1/2   …",
 		}},
-		{"empty", 0, 0, 20, 4, "", []string{
+		{"empty", 0, 0, 20, 5, "", []string{
 			"  │ ",
+			"──┼─",
 			"",
 			"",
 			" t.csv   row 0/0   …",

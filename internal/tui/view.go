@@ -33,6 +33,12 @@ func (m *model) render(dst []byte) []byte {
 	dst = f.AppendMarked(dst, from(m.header, m.left), m.col-m.left, underline, noUnder)
 	dst = append(dst, reset+clearEOL+"\r\n"...)
 
+	dst = append(dst, dim...)
+	dst = appendLines(dst, width)
+	dst = append(dst, "─┼─"...)
+	dst = f.AppendRule(dst)
+	dst = append(dst, reset+clearEOL+"\r\n"...)
+
 	for i := range m.page() {
 		r := m.top + i
 		if r < m.rows {
@@ -104,6 +110,13 @@ func appendFit(dst []byte, s string, w int) []byte {
 	}
 	dst = append(dst, s...)
 	return appendSpaces(dst, w-layout.Width(s))
+}
+
+func appendLines(dst []byte, n int) []byte {
+	for range n {
+		dst = append(dst, "─"...)
+	}
+	return dst
 }
 
 func appendSpaces(dst []byte, n int) []byte {

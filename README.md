@@ -4,10 +4,12 @@
 
 ```
 $ grid customers.csv
-id | name | city
----+------+-------
- 1 | Anna | Berlin
- 2 | Ömer | Köln
+┌────┬──────┬────────┐
+│ id │ name │ city   │
+├────┼──────┼────────┤
+│  1 │ Anna │ Berlin │
+│  2 │ Ömer │ Köln   │
+└────┴──────┴────────┘
 ```
 
 For large tables there is an interactive view for scrolling and searching.
@@ -44,16 +46,27 @@ grid -h                      # all options
 
 ## Printing a table
 
-Without options, `grid` writes the table straight to the terminal. The first row is the header and is separated by a rule. Numeric columns are right-aligned.
+Without options, `grid` writes the table straight to the terminal, framed with box-drawing lines. The first row is the header and is separated by a rule. Numeric columns are right-aligned.
+
+When the output goes to a file or a pipe, `grid` uses plain ASCII lines instead, so the result is easy to process further:
+
+```
+id | name | city
+---+------+-------
+ 1 | Anna | Berlin
+ 2 | Ömer | Köln
+```
 
 **Width.** The table is fitted to the width of the terminal. Cells that are too long are cut with `…`, line breaks inside a cell show as `↵`. If not all columns fit, `grid` says at the end how many are missing:
 
 ```
-Text    | Number | Date   | Time   | DateT… | Perce… | Bool
---------+--------+--------+--------+--------+--------+------
-Anna    |     42 | 2024-… | 13:45… | 2024-… |    25% | TRUE
-Bo, "q… |   -3.5 | 1900-… |        |        | 12.50% | FALSE
-(4 more columns, use a wider terminal or -view)
+┌─────────┬─────────┬─────────┬─────────┬─────────┬────────┐
+│ Text    │  Number │ Date    │ Time    │ DateTi… │ Perce… │
+├─────────┼─────────┼─────────┼─────────┼─────────┼────────┤
+│ Anna    │      42 │ 2024-0… │ 13:45:… │ 2024-0… │    25% │
+│ Bo, "q… │    -3.5 │ 1900-0… │         │         │ 12.50% │
+└─────────┴─────────┴─────────┴─────────┴─────────┴────────┘
+(5 more columns, use a wider terminal or -view)
 ```
 
 `-w 120` sets your own width, `-w 0` disables cutting entirely. That is handy when the output goes to a file:
@@ -76,7 +89,7 @@ Print 1200 rows? Use -view to browse instead. [y/N]
 grid -v data.xlsx
 ```
 
-The view fills the terminal and keeps the header pinned at the top. Row numbers are on the left, the current row is highlighted and the current cell within it stands out. The status line at the bottom shows file, row, column and column name. Large files keep loading in the background; the first page appears immediately.
+The view fills the terminal and keeps the header and its rule pinned at the top. Row numbers are on the left, the current row is highlighted and the current cell within it stands out. The status line at the bottom shows file, row, column and column name. Large files keep loading in the background; the first page appears immediately.
 
 | Key | Action |
 |---|---|

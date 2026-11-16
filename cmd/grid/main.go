@@ -56,7 +56,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		defer restore()
 		return tui.Run(rows, title(cfg.path), term)
 	}
-	text := output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout)}
+	text := output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout), Border: isTerminal(stdout)}
 	if !cfg.yes && isTerminal(stdout) {
 		text.Confirm = func(n int, more bool) bool {
 			return confirm(stderr, n, more)

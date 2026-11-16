@@ -124,3 +124,40 @@ func TestTextShowConfirm(t *testing.T) {
 		})
 	}
 }
+
+func TestTextShowBorder(t *testing.T) {
+	tests := []struct {
+		name     string
+		maxWidth int
+		rows     [][]string
+		want     []string
+	}{
+		{"frame", 0, [][]string{{"1", "Anna"}, {"22", "Bo"}}, []string{
+			"┌────┬──────┐",
+			"│ id │ name │",
+			"├────┼──────┤",
+			"│  1 │ Anna │",
+			"│ 22 │ Bo   │",
+			"└────┴──────┘",
+		}},
+		{"frame counts toward max width", 15, [][]string{{"1", "a very long note"}}, []string{
+			"┌────┬────────┐",
+			"│ id │ name   │",
+			"├────┼────────┤",
+			"│  1 │ a ver… │",
+			"└────┴────────┘",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			text := Text{W: &buf, MaxWidth: tt.maxWidth, Border: true}
+			if err := text.Show(table.FromSlices([]string{"id", "name"}, tt.rows)); err != nil {
+				t.Fatal(err)
+			}
+			if got, want := buf.String(), strings.Join(tt.want, "\n")+"\n"; got != want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}

@@ -1,6 +1,9 @@
 package layout
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAppendRow(t *testing.T) {
 	tests := []struct {
@@ -40,5 +43,37 @@ func TestAppendRule(t *testing.T) {
 	f := Formatter{Cols: []Column{{2, false}, {3, true}}, Sep: " | "}
 	if got := string(f.AppendRule(nil)); got != "---+----" {
 		t.Errorf("got %q", got)
+	}
+}
+
+func TestAppendRuleBox(t *testing.T) {
+	f := Formatter{Cols: []Column{{2, false}, {3, true}}, Sep: " │ "}
+	if got := string(f.AppendRule(nil)); got != "───┼────" {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestBorder(t *testing.T) {
+	f := Formatter{Cols: []Column{{2, false}, {3, true}}, Sep: " │ ", Border: true}
+	got := []string{
+		string(f.AppendTop(nil)),
+		string(f.AppendRow(nil, []string{"a", "1"})),
+		string(f.AppendRule(nil)),
+		string(f.AppendBottom(nil)),
+	}
+	want := []string{"┌────┬─────┐", "│ a  │   1 │", "├────┼─────┤", "└────┴─────┘"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("line %d: got %q, want %q", i, got[i], want[i])
+		}
+		if w := Width(got[i]); w != 5+3+BorderWidth {
+			t.Errorf("line %d is %d wide", i, w)
+		}
+	}
+}
+
+func TestAppendRepeatMultiByte(t *testing.T) {
+	if got := string(appendRepeat(nil, lines, 300)); got != strings.Repeat("─", 300) {
+		t.Errorf("got %d bytes", len(got))
 	}
 }
