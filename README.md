@@ -14,7 +14,9 @@ For large tables there is an interactive view for scrolling and searching.
 
 ## Installation
 
-You need [Go](https://go.dev/dl/) 1.27 or newer.
+Ready-built binaries for Linux, macOS, Windows and FreeBSD are attached to every [release](https://github.com/wgnsimon/gridview/releases). Download the archive for your system, unpack it and put `grid` (or `grid.exe`) somewhere on your `PATH`.
+
+To build it yourself you need [Go](https://go.dev/dl/) 1.27 or newer.
 
 ```bash
 git clone https://github.com/wgnsimon/gridview.git
