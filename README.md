@@ -3,8 +3,10 @@
 Schneller, leichter Tabellen-Viewer fürs Terminal. Der Befehl heißt `grid` und liest CSV, xlsx und xls ohne Abhängigkeiten außer `golang.org/x/term`.
 
 ```bash
-go install ./cmd/grid
+go install -ldflags="-s -w" -trimpath ./cmd/grid
 ```
+
+`-s -w` lässt Symbol- und Debug-Tabellen weg, das Binary schrumpft von 4,2 MB auf 2,7 MB.
 
 ## Bedienung
 

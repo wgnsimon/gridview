@@ -47,7 +47,7 @@ func measure(s string) (int, bool) {
 // RuneWidth returns 0, 1 or 2 terminal columns for r.
 func RuneWidth(r rune) int {
 	switch {
-	case r < utf8.RuneSelf:
+	case r < 0x300: // no combining or wide characters below U+0300
 		return 1
 	case r == 0x200D || (r >= 0xFE00 && r <= 0xFE0F):
 		return 0

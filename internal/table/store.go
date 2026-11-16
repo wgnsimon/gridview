@@ -43,6 +43,21 @@ func (s *Store) Len() int {
 	return len(s.index)
 }
 
+// Raw returns row i as stored: cell bytes with length prefixes in between.
+// It is meant for searching; a hit has to be confirmed on the decoded row.
+func (s *Store) Raw(i int) string {
+	s.mu.RLock()
+	at := s.index[i]
+	c := s.chunks[at>>32]
+	end := len(c)
+	if i+1 < len(s.index) && s.index[i+1]>>32 == at>>32 {
+		end = int(uint32(s.index[i+1]))
+	}
+	s.mu.RUnlock()
+	b := c[uint32(at):end]
+	return unsafe.String(unsafe.SliceData(b), len(b))
+}
+
 // Row decodes row i into dst and returns it.
 func (s *Store) Row(i int, dst []string) []string {
 	s.mu.RLock()

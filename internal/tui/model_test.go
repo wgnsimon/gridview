@@ -143,6 +143,14 @@ func TestContainsFold(t *testing.T) {
 		{"Größe", "grö", true},
 		{"GRÖSSE", "grö", true},
 		{"abc", "", true},
+		{"", "a", false},
+		{"aAaAab", "aab", true},
+		{"AAAA", "aab", false},
+		{"xaXb", "xb", true},
+		{"a-b", "-b", true},
+		{"ab", "abc", false},
+		{"Jörg MÜLLER", "müller", true},
+		{"Mueller", "müller", false},
 	} {
 		if got := containsFold(tt.s, tt.q); got != tt.want {
 			t.Errorf("containsFold(%q, %q) = %v", tt.s, tt.q, got)

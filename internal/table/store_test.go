@@ -1,6 +1,7 @@
 package table
 
 import (
+	"encoding/binary"
 	"fmt"
 	"slices"
 	"strings"
@@ -27,6 +28,17 @@ func TestStore(t *testing.T) {
 		dst = s.Row(i, dst)
 		if !slices.Equal(dst, want) {
 			t.Errorf("row %d = %.20q, want %.20q", i, dst, want)
+		}
+		raw := s.Raw(i)
+		size := 1
+		for _, c := range want {
+			size += len(binary.AppendUvarint(nil, uint64(len(c)))) + len(c)
+			if !strings.Contains(raw, c) {
+				t.Errorf("raw row %d lacks %.20q", i, c)
+			}
+		}
+		if len(raw) != size {
+			t.Errorf("raw row %d has %d bytes, want %d", i, len(raw), size)
 		}
 	}
 }
