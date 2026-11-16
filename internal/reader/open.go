@@ -4,10 +4,10 @@ package reader
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io"
 	"os"
 
+	"gridview/internal/reader/xls"
 	"gridview/internal/reader/xlsx"
 	"gridview/internal/table"
 )
@@ -82,11 +82,19 @@ func OpenReader(r io.Reader, opt Options) (table.Rows, error) {
 	return openCSV(br, opt.Delimiter)
 }
 
+type workbook interface {
+	Sheets() []string
+	Rows(sheet string) (table.Rows, error)
+}
+
 func openWorkbook(format format, r io.ReaderAt, size int64, sheet string) (table.Rows, error) {
+	var book workbook
+	var err error
 	if format == formatXLS {
-		return nil, errors.New("xls is not supported yet")
+		book, err = xls.Open(r, size)
+	} else {
+		book, err = xlsx.Open(r, size)
 	}
-	book, err := xlsx.Open(r, size)
 	if err != nil {
 		return nil, err
 	}

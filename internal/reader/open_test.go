@@ -32,6 +32,8 @@ func TestOpenFormats(t *testing.T) {
 	}{
 		{"testdata/types.xlsx", "", []string{"Anna", "42", "2024-01-31"}},
 		{"testdata/types.xlsx", "Zweites Blatt", []string{"1", "2"}},
+		{"testdata/types.xls", "", []string{"Anna", "42", "2024-01-31"}},
+		{"testdata/libreoffice.xls", "viele", []string{"1", "Zeile 0001 äöü Größe €Ł"}},
 		{"testdata/excel-local.csv", "", []string{"Anna", "42", "31.01.2024"}},
 		{"testdata/excel-utf8.csv", "", []string{"Anna", "42", "31.01.2024"}},
 		{"testdata/excel-unicode.txt", "", []string{"Anna", "42", "31.01.2024"}},
