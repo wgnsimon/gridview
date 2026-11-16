@@ -74,6 +74,9 @@ func ruleSep(sep string) string {
 func appendCell(dst []byte, s string, c Column, cut, pad bool) []byte {
 	sw, clean := measure(s)
 	if sw > c.Width && cut {
+		if clean && sw == len(s) && c.Width > 0 {
+			return append(append(dst, s[:c.Width-1]...), ellipsis...)
+		}
 		return appendCut(dst, s, c.Width)
 	}
 	gap := c.Width - sw
