@@ -29,7 +29,7 @@ func TestGolden(t *testing.T) {
 		{"excel-unicode", []string{fixtures + "excel-unicode.txt"}, ""},
 		{"types-xlsx", []string{fixtures + "types.xlsx"}, ""},
 		{"types-xlsx-sheet2", []string{"-s", "2", fixtures + "types.xlsx"}, ""},
-		{"types-xlsx-empty", []string{fixtures + "types.xlsx", "-sheet", "Leer"}, ""},
+		{"types-xlsx-empty", []string{fixtures + "types.xlsx", "-sheet", "Empty"}, ""},
 		{"types-xls", []string{fixtures + "types.xls"}, ""},
 		{"libreoffice-xlsx", []string{fixtures + "libreoffice.xlsx"}, ""},
 		{"libreoffice-xls", []string{fixtures + "libreoffice.xls"}, ""},

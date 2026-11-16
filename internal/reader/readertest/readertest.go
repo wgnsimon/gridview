@@ -26,22 +26,22 @@ type Quirks struct {
 
 var Excel = Quirks{LeapDay: "1900-02-29", Formula: `Anna-Bo, "quoted"`}
 
-var DatenHeader = []string{"Text", "Zahl", "Datum", "Zeit", "DatumZeit", "Prozent", "Bool", "Formel", "Fehler", "Leer", "Unicode"}
+var DataHeader = []string{"Text", "Number", "Date", "Time", "DateTime", "Percent", "Bool", "Formula", "Error", "Empty", "Unicode"}
 
-// Daten returns the rows of the first fixture sheet.
-func Daten(q Quirks) [][]string {
+// Data returns the rows of the first fixture sheet.
+func Data(q Quirks) [][]string {
 	return [][]string{
 		{"Anna", "42", "2024-01-31", "13:45:00", "2024-01-31 13:45:00", "25%", "TRUE", "84", "#DIV/0!", "", "Müller ☕ 田中"},
 		{`Bo, "quoted"`, "-3.5", "1900-03-01", "", "", "12.50%", "FALSE", "0.3", "#N/A", "", "Emoji 😀"},
-		{"zwei\nZeilen", "1234567.89", q.LeapDay, "", "", "", "", q.Formula},
+		{"two\nlines", "1234567.89", q.LeapDay, "", "", "", "", q.Formula},
 		{},
-		{"00123", "", "", "", "", "", "", "", "", "", "Ende"},
+		{"00123", "", "", "", "", "", "", "", "", "", "End"},
 	}
 }
 
-// Viele returns row i (1-based) of the sheet with 1200 shared strings.
-func Viele(i int) []string {
-	s := fmt.Sprintf("Zeile %04d äöü Größe", i)
+// Many returns row i (1-based) of the sheet with 1200 shared strings.
+func Many(i int) []string {
+	s := fmt.Sprintf("Row %04d äöü ß", i)
 	if i%2 == 1 {
 		s += " €Ł"
 	}
@@ -51,31 +51,31 @@ func Viele(i int) []string {
 // CheckWorkbook compares all four fixture sheets of b.
 func CheckWorkbook(t *testing.T, b Book, q Quirks) {
 	t.Helper()
-	if got, want := b.Sheets(), []string{"Daten", "Zweites Blatt", "Leer", "Viele"}; !slices.Equal(got, want) {
+	if got, want := b.Sheets(), []string{"Data", "Second sheet", "Empty", "Many"}; !slices.Equal(got, want) {
 		t.Fatalf("sheets = %q, want %q", got, want)
 	}
 	header, rows := Sheet(t, b, "")
-	if !slices.Equal(Trim(header), DatenHeader) {
+	if !slices.Equal(Trim(header), DataHeader) {
 		t.Errorf("header = %q", header)
 	}
-	if want := Daten(q); !slices.EqualFunc(rows, want, slices.Equal) {
-		t.Errorf("Daten:\n got %q\nwant %q", rows, want)
+	if want := Data(q); !slices.EqualFunc(rows, want, slices.Equal) {
+		t.Errorf("Data:\n got %q\nwant %q", rows, want)
 	}
 	header, rows = Sheet(t, b, "2")
 	if !slices.Equal(Trim(header), []string{"x", "y"}) || !slices.EqualFunc(rows, [][]string{{"1", "2"}, {"2.5", "5"}}, slices.Equal) {
-		t.Errorf("Zweites Blatt = %q %q", header, rows)
+		t.Errorf("Second sheet = %q %q", header, rows)
 	}
-	header, rows = Sheet(t, b, "leer")
+	header, rows = Sheet(t, b, "empty")
 	if len(header) != 0 || len(rows) != 0 {
-		t.Errorf("Leer = %q %q", header, rows)
+		t.Errorf("Empty = %q %q", header, rows)
 	}
-	_, rows = Sheet(t, b, "Viele")
+	_, rows = Sheet(t, b, "Many")
 	if len(rows) != 1200 {
-		t.Fatalf("Viele has %d rows", len(rows))
+		t.Fatalf("Many has %d rows", len(rows))
 	}
 	for i, row := range rows {
-		if want := Viele(i + 1); !slices.Equal(row, want) {
-			t.Fatalf("Viele row %d = %q, want %q", i+1, row, want)
+		if want := Many(i + 1); !slices.Equal(row, want) {
+			t.Fatalf("Many row %d = %q, want %q", i+1, row, want)
 		}
 	}
 	if _, err := b.Rows("nope"); err == nil {

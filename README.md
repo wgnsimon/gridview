@@ -1,97 +1,173 @@
-# gridview
+<p align="center"><img src="docs/logo.svg" alt="grid" width="246"></p>
 
-Schneller, leichter Tabellen-Viewer fürs Terminal. Der Befehl heißt `grid` und liest CSV, xlsx und xls ohne Abhängigkeiten außer `golang.org/x/term`.
+`grid` shows CSV and Excel files as a table in the terminal. Just pass the file and `grid` works out the rest by itself: format, character set, delimiter and numeric columns.
+
+```
+$ grid customers.csv
+id | name | city
+---+------+-------
+ 1 | Anna | Berlin
+ 2 | Ömer | Köln
+```
+
+For large tables there is an interactive view for scrolling and searching.
+
+## Installation
+
+You need [Go](https://go.dev/dl/) 1.27 or newer.
+
+```bash
+git clone https://github.com/wgnsimon/gridview.git
+```
+
+```bash
+cd gridview
+```
 
 ```bash
 go install -ldflags="-s -w" -trimpath ./cmd/grid
 ```
 
-`-s -w` lässt Symbol- und Debug-Tabellen weg, das Binary schrumpft von 4,2 MB auf 2,7 MB.
+`grid` then lives in `$(go env GOPATH)/bin`. If that folder is on your `PATH`, `grid` works in every terminal.
 
-## Bedienung
+## Getting started
 
 ```bash
-grid daten.csv               # Tabelle ausgeben
-grid -view daten.xlsx        # interaktive Ansicht
-grid -s Umsatz mappe.xls     # Sheet per Name oder 1-basiertem Index
-grid -d ";" export.csv       # Trennzeichen erzwingen, sonst automatisch
-grid -w 0 daten.csv > out    # nicht auf Terminalbreite kürzen
-cat daten.csv | grid         # stdin, auch zusammen mit -view
+grid data.csv                # print the table
+grid -v data.xlsx            # browse interactively
+grid -s Sales book.xls       # open a specific sheet
+cat data.csv | grid          # read from stdin
+grid -h                      # all options
 ```
 
-| Flag | Bedeutung |
+## Printing a table
+
+Without options, `grid` writes the table straight to the terminal. The first row is the header and is separated by a rule. Numeric columns are right-aligned.
+
+**Width.** The table is fitted to the width of the terminal. Cells that are too long are cut with `…`, line breaks inside a cell show as `↵`. If not all columns fit, `grid` says at the end how many are missing:
+
+```
+Text    | Number | Date   | Time   | DateT… | Perce… | Bool
+--------+--------+--------+--------+--------+--------+------
+Anna    |     42 | 2024-… | 13:45… | 2024-… |    25% | TRUE
+Bo, "q… |   -3.5 | 1900-… |        |        | 12.50% | FALSE
+(4 more columns, use a wider terminal or -view)
+```
+
+`-w 120` sets your own width, `-w 0` disables cutting entirely. That is handy when the output goes to a file:
+
+```bash
+grid -w 0 book.xlsx > book.txt
+```
+
+**Long tables.** If a table has more than 250 rows, `grid` asks first so the terminal doesn't get flooded:
+
+```
+Print 1200 rows? Use -view to browse instead. [y/N]
+```
+
+`y` prints the table, anything else cancels. `-y` skips the question. When writing to a file or pipe, `grid` never asks.
+
+## Interactive view
+
+```bash
+grid -v data.xlsx
+```
+
+The view fills the terminal and keeps the header pinned at the top. Row numbers are on the left, the current row is highlighted and the current cell within it stands out. The status line at the bottom shows file, row, column and column name. Large files keep loading in the background; the first page appears immediately.
+
+| Key | Action |
 |---|---|
-| `-view`, `-v` | interaktive Ansicht |
-| `-sheet`, `-s` | Sheet für xlsx/xls, Name oder Nummer |
-| `-d` | CSV-Trennzeichen, `tab` für Tabulator |
-| `-width`, `-w` | maximale Zeilenbreite, `0` unbegrenzt, Standard ist die Terminalbreite |
+| `↑` `↓` or `k` `j` | one row up, down |
+| `←` `→` or `h` `l` | one column left, right |
+| `PgUp` `PgDn` or `b` `Space` | one page up, down |
+| `Home` `End` or `g` `G` | first, last row |
+| `0` `$` | first, last column |
+| `/` | search |
+| `n` `N` | next, previous match |
+| `w` | toggle full-width columns |
+| `q` `Esc` `Ctrl-C` | quit |
 
-Flags dürfen vor oder nach der Datei stehen.
+**Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. Case doesn't matter, and all cells are searched. After the last match it wraps around to the top. `Esc` cancels the input.
 
-**Erkannt wird automatisch:** das Format an den ersten Bytes (nicht an der Endung), UTF-8 mit und ohne BOM, UTF-16 (Excel „Unicode-Text“), Windows-1252 (deutsches Excel-CSV), das Trennzeichen `,` `;` Tab `|` sowie Zahlenspalten, die rechtsbündig gesetzt werden.
+**Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
 
-**Excel-Werte** werden so angezeigt, wie Excel sie meint: Datumswerte als `2024-01-31`, Uhrzeiten als `13:45:00`, Prozente, feste Nachkommastellen, `TRUE`/`FALSE`, Fehler wie `#DIV/0!` und das zwischengespeicherte Ergebnis von Formeln.
+The view also works with data from stdin:
 
-### Tasten in `-view`
+```bash
+curl -s https://example.com/export.csv | grid -v
+```
 
-| Taste | Aktion |
+## File formats
+
+| Format | Notes |
 |---|---|
-| `↑ ↓` `j k` | Zeile |
-| `← →` `h l` | Spalte |
-| `PgUp PgDn` `b Leertaste` | Seite |
-| `g G` `Home End` | Anfang, Ende |
-| `0 $` | erste, letzte Spalte |
-| `/` `n` `N` | suchen, nächster, vorheriger Treffer |
-| `w` | breite Spalten an/aus |
-| `q` `Esc` `Ctrl-C` | beenden |
+| CSV, TSV, TXT | delimiters `,` `;` tab or `\|` are detected |
+| xlsx | Excel 2007 and newer, also from LibreOffice |
+| xls | Excel 97 to 2003 |
 
-Große Dateien laden im Hintergrund, die erste Seite erscheint sofort.
+The format is detected from the file contents, not the extension, so a misnamed file still opens.
 
-## Struktur
+### CSV
 
-```
-cmd/grid/                  Flags, Verdrahtung, Ende-zu-Ende- und Golden-Tests
-internal/
-  table/                   gemeinsame Basis: Rows-Interface, kompakter Zeilenspeicher
-  layout/                  gemeinsame Basis: Anzeigebreite, Zellen, Spalten einpassen
-  reader/                  Format-Erkennung, CSV, Zeichensätze, Trennzeichen
-    excel/                 Zahlenformate, Datumssysteme, Sheet-Auswahl (xlsx und xls)
-    xlsx/                  ZIP + streamender XML-Scanner
-    xls/                   Compound File + BIFF8
-    readertest/            gemeinsame Prüfungen gegen die Fixtures
-    testdata/              echte Dateien aus Excel und LibreOffice
-  output/                  Textausgabe
-  tui/                     interaktive Ansicht
-  sample/                  reproduzierbare Testdaten
-tools/
-  gendata/                 große CSV/xlsx-Dateien erzeugen
-  fixtures/excel.ps1       Fixtures mit Excel und LibreOffice neu erzeugen
-```
+Character sets are detected automatically: UTF-8 with and without BOM, UTF-16 (Excel "Unicode Text") and Windows-1252, which Excel writes in many Western European locales when saving as CSV. So accented characters look right even in old exports.
 
-```
-cmd/grid → reader, output, tui
-output   → layout, table
-tui      → layout, table
-reader   → table          (xlsx, xls → excel, table)
-```
-
-Textausgabe und TUI teilen sich `table` und `layout`, wissen aber nichts voneinander. Die Reader kennen weder Terminal noch Ausgabe.
-
-## Tests
+If delimiter detection gets it wrong, set it with `-d`:
 
 ```bash
-go test ./...
-```
-
-- **Unit-Tests** neben jeder Datei
-- **Fixtures** in `internal/reader/testdata`, erzeugt von Excel und LibreOffice: Datumswerte, Formeln, Fehler, Unicode, mehrere Sheets, 1200 gemeinsame Strings über CONTINUE-Records
-- **Golden Files** für die komplette Ausgabe aller Fixtures (`cmd/grid/testdata`) und eine TUI-Sitzung (`internal/tui/testdata`). Neu schreiben mit `go test ./... -update`, danach den Diff in git prüfen.
-- **Fuzzing**: Der CSV-Parser wird gegen `encoding/csv` verglichen, xlsx und xls gegen kaputte Eingaben
-
-```bash
-go test ./internal/reader -run=^$ -fuzz=FuzzCSVMatchesEncodingCSV -fuzztime=60s
+grid -d ";" export.csv
 ```
 
 ```bash
-go test ./internal/reader/xls -run=^$ -fuzz=FuzzOpen -fuzztime=60s
+grid -d tab export.txt
 ```
+
+### Excel
+
+`grid` opens the first sheet. Pick another with `-s`, by name or number (starting at 1). Names are matched case-insensitively.
+
+```bash
+grid -s Sales book.xlsx
+```
+
+```bash
+grid -s 2 book.xlsx
+```
+
+If the sheet doesn't exist, the error message lists all available ones.
+
+Cells appear the way Excel displays them:
+
+| In Excel | In grid |
+|---|---|
+| Date | `2024-01-31` |
+| Time | `13:45:00` |
+| Date with time | `2024-01-31 13:45:00` |
+| Percentage | `25%`, `12.50%` |
+| Number with fixed decimals | as many decimals as the format has |
+| Boolean | `TRUE`, `FALSE` |
+| Error | `#DIV/0!`, `#N/A` |
+| Formula | the result Excel last calculated |
+
+`grid` doesn't evaluate formulas itself. It shows the value Excel or LibreOffice stored when the file was last saved.
+
+**Not supported:** encrypted workbooks, xls from Excel 5.0/95 and older, and other formats such as `.ods` or `.xlsb`.
+
+## Options
+
+| Option | Meaning |
+|---|---|
+| `-view`, `-v` | interactive view |
+| `-sheet`, `-s` | sheet for xlsx/xls, name or number starting at 1 |
+| `-d` | force the CSV delimiter, `tab` for tab |
+| `-width`, `-w` | maximum line width, `0` for unlimited. Defaults to the terminal width |
+| `-yes`, `-y` | print long tables without asking |
+| `-h` | show help |
+
+Options may come before or after the file name. Without a file name, or with `-`, `grid` reads from stdin.
+
+On error, `grid` writes a message prefixed with `grid:` to stderr and exits with code 1.
+
+## Contributing
+
+Code structure and tests are described in [DEVELOPMENT.md](DEVELOPMENT.md).

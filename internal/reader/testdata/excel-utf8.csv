@@ -1,7 +1,7 @@
-﻿Text;Zahl;Datum;Zeit;DatumZeit;Prozent;Bool;Formel;Fehler;Leer;Unicode
+﻿Text;Number;Date;Time;DateTime;Percent;Bool;Formula;Error;Empty;Unicode
 Anna;42;31.01.2024;13:45:00;31.01.2024 13:45;25%;WAHR;84;#DIV/0!;;Müller ☕ 田中
 "Bo, ""quoted""";-3,5;01.03.1900;;;12,50%;FALSCH;0,3;#NV;;Emoji 😀
-"zwei
-Zeilen";1234567,89;29.02.1900;;;;;"Anna-Bo, ""quoted""";;;
+"two
+lines";1234567,89;29.02.1900;;;;;"Anna-Bo, ""quoted""";;;
 ;;;;;;;;;;
-00123;;;;;;;;;;Ende
+00123;;;;;;;;;;End

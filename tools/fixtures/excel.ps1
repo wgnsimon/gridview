@@ -18,8 +18,8 @@ try {
     while ($wb.Worksheets.Count -lt 4) { [void]$wb.Worksheets.Add($m, $wb.Worksheets.Item($wb.Worksheets.Count)) }
 
     $s = $wb.Worksheets.Item(1)
-    $s.Name = 'Daten'
-    $h = 'Text', 'Zahl', 'Datum', 'Zeit', 'DatumZeit', 'Prozent', 'Bool', 'Formel', 'Fehler', 'Leer', 'Unicode'
+    $s.Name = 'Data'
+    $h = 'Text', 'Number', 'Date', 'Time', 'DateTime', 'Percent', 'Bool', 'Formula', 'Error', 'Empty', 'Unicode'
     for ($i = 0; $i -lt $h.Count; $i++) { $s.Cells.Item(1, ($i + 1)).Value2 = $h[$i] }
 
     $s.Cells.Item(2, 1).Value2 = 'Anna'
@@ -42,16 +42,16 @@ try {
     $s.Cells.Item(3, 9).Formula = '=NA()'
     $s.Cells.Item(3, 11).Value2 = 'Emoji ' + (U 0x1F600)
 
-    $s.Cells.Item(4, 1).Value2 = "zwei`nZeilen"
+    $s.Cells.Item(4, 1).Value2 = "two`nlines"
     $c = $s.Cells.Item(4, 2); $c.Value2 = 1234567.891; F $c '0.00'
     $c = $s.Cells.Item(4, 3); $c.Value2 = 60; F $c 'm/d/yyyy'
     $s.Cells.Item(4, 8).Formula = '=A2&"-"&A3'
 
     $c = $s.Cells.Item(6, 1); F $c '@'; $c.Value2 = '00123'
-    $s.Cells.Item(6, 11).Value2 = 'Ende'
+    $s.Cells.Item(6, 11).Value2 = 'End'
 
     $s = $wb.Worksheets.Item(2)
-    $s.Name = 'Zweites Blatt'
+    $s.Name = 'Second sheet'
     $s.Cells.Item(1, 1).Value2 = 'x'
     $s.Cells.Item(1, 2).Value2 = 'y'
     $s.Cells.Item(2, 1).Value2 = 1
@@ -59,14 +59,14 @@ try {
     $s.Cells.Item(3, 1).Value2 = 2.5
     $s.Cells.Item(3, 2).Formula = '=A3*2'
 
-    $wb.Worksheets.Item(3).Name = 'Leer'
+    $wb.Worksheets.Item(3).Name = 'Empty'
 
     $s = $wb.Worksheets.Item(4)
-    $s.Name = 'Viele'
+    $s.Name = 'Many'
     $s.Cells.Item(1, 1).Value2 = 'n'
     $s.Cells.Item(1, 2).Value2 = 'text'
     for ($i = 1; $i -le 1200; $i++) {
-        $t = ('Zeile {0:D4} ' -f $i) + (U 0xE4, 0xF6, 0xFC) + ' Gr' + (U 0xF6, 0xDF) + 'e'
+        $t = ('Row {0:D4} ' -f $i) + (U 0xE4, 0xF6, 0xFC) + ' ' + (U 0xDF)
         if ($i % 2 -eq 1) { $t += ' ' + (U 0x20AC) + (U 0x141) }
         $r = $i + 1
         $s.Range("A$r").Value2 = [double]$i
@@ -90,7 +90,7 @@ finally {
 $soffice = Join-Path $env:ProgramFiles 'LibreOffice\program\soffice.exe'
 if (Test-Path $soffice) {
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ('gridview-lo-' + [guid]::NewGuid())
-    $profile = 'file:///' + ($tmp -replace '\', '/') + '/profile'
+    $profile = 'file:///' + ($tmp -replace '\\', '/') + '/profile'
     & $soffice "-env:UserInstallation=$profile" --headless --convert-to xls --outdir $tmp (Join-Path $Out 'types.xlsx') | Out-Null
     & $soffice "-env:UserInstallation=$profile" --headless --convert-to 'xlsx:Calc MS Excel 2007 XML' --outdir $tmp (Join-Path $Out 'types.xls') | Out-Null
     Copy-Item (Join-Path $tmp 'types.xls') (Join-Path $Out 'libreoffice.xls')

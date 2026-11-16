@@ -34,7 +34,7 @@ type cell struct {
 }
 
 func TestOpen(t *testing.T) {
-	excelCSV := []cell{{0, 0, "Anna"}, {0, 2, "31.01.2024"}, {1, 0, `Bo, "quoted"`}, {2, 0, "zwei\nZeilen"}, {4, 10, "Ende"}}
+	excelCSV := []cell{{0, 0, "Anna"}, {0, 2, "31.01.2024"}, {1, 0, `Bo, "quoted"`}, {2, 0, "two\nlines"}, {4, 10, "End"}}
 	tests := []struct {
 		file   string
 		opt    Options
@@ -44,17 +44,17 @@ func TestOpen(t *testing.T) {
 		cells  []cell
 	}{
 		{file: "simple.csv", header: []string{"id", "name", "city"}, rows: [][]string{{"1", "Anna", "Berlin"}, {"2", "Ömer", "Köln"}}},
-		{file: "quoted.csv", header: []string{"id", "name", "note"}, rows: [][]string{{"1", "Schmidt, Peter", `sagt "Hallo"`}, {"2", "Lena", "zwei\nZeilen"}}},
+		{file: "quoted.csv", header: []string{"id", "name", "note"}, rows: [][]string{{"1", "Schmidt, Peter", `says "hello"`}, {"2", "Lena", "two\nlines"}}},
 		{file: "ragged.csv", header: []string{"a", "b", "c"}, rows: [][]string{{"1", "2"}, {"3", "4", "5", "6"}}},
 		{file: "simple.csv", opt: Options{Delimiter: ';'}, header: []string{"id,name,city"}, count: 2},
-		{file: "excel-local.csv", header: readertest.DatenHeader, count: 5, cells: append(excelCSV, cell{0, 10, "Müller ? ??"})},
-		{file: "excel-utf8.csv", header: readertest.DatenHeader, count: 5, cells: append(excelCSV, cell{0, 10, "Müller ☕ 田中"})},
-		{file: "excel-unicode.txt", header: readertest.DatenHeader, count: 5, cells: append(excelCSV, cell{1, 10, "Emoji 😀"})},
-		{file: "types.xlsx", header: readertest.DatenHeader, rows: readertest.Daten(readertest.Excel)},
-		{file: "types.xls", header: readertest.DatenHeader, rows: readertest.Daten(readertest.Excel)},
-		{file: "libreoffice.xls", opt: Options{Sheet: "zweites blatt"}, header: []string{"x", "y"}, rows: [][]string{{"1", "2"}, {"2.5", "5"}}},
+		{file: "excel-local.csv", header: readertest.DataHeader, count: 5, cells: append(excelCSV, cell{0, 10, "Müller ? ??"})},
+		{file: "excel-utf8.csv", header: readertest.DataHeader, count: 5, cells: append(excelCSV, cell{0, 10, "Müller ☕ 田中"})},
+		{file: "excel-unicode.txt", header: readertest.DataHeader, count: 5, cells: append(excelCSV, cell{1, 10, "Emoji 😀"})},
+		{file: "types.xlsx", header: readertest.DataHeader, rows: readertest.Data(readertest.Excel)},
+		{file: "types.xls", header: readertest.DataHeader, rows: readertest.Data(readertest.Excel)},
+		{file: "libreoffice.xls", opt: Options{Sheet: "second sheet"}, header: []string{"x", "y"}, rows: [][]string{{"1", "2"}, {"2.5", "5"}}},
 		{file: "types.xlsx", opt: Options{Sheet: "3"}},
-		{file: "types.xlsx", opt: Options{Sheet: "Viele"}, header: []string{"n", "text"}, count: 1200, cells: []cell{{1199, 1, "Zeile 1200 äöü Größe"}}},
+		{file: "types.xlsx", opt: Options{Sheet: "Many"}, header: []string{"n", "text"}, count: 1200, cells: []cell{{1199, 1, "Row 1200 äöü ß"}}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.file+"/"+tt.opt.Sheet+string(tt.opt.Delimiter), func(t *testing.T) {

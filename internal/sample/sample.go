@@ -16,13 +16,13 @@ var (
 	firstNames = []string{"Anna", "Jörg", "Peter", "Lena", "Ömer", "Zoë", "Max", "Sophie", "Liam", "Mia", "Lukas", "Emma", "Jonas", "Hannah", "Felix", "Lea"}
 	lastNames  = []string{"Müller", "Schmidt", "Schneider", "Fischer", "Weber", "Meyer", "Wagner", "Becker", "Groß", "Weiß", "Yılmaz", "Chen", "Bauer", "Koch"}
 	cities     = []string{"Berlin", "Hamburg", "München", "Köln", "Frankfurt am Main", "Stuttgart", "Düsseldorf", "Leipzig", "Dresden", "Nürnberg"}
-	products   = []string{"Laptop", "Monitor 27\"", "Tastatur", "Maus", "USB-C Hub", "Headset", "Webcam", "Dockingstation", "SSD 1TB", "Drucker, Laser"}
-	states     = []string{"offen", "bezahlt", "versendet", "storniert", "retour"}
-	notes      = []string{"", "", "", "", "Express", "Geschenkverpackung", "Bitte beim Nachbarn abgeben", "Rechnung an Firma, nicht privat", "Lieferung \"dringend\""}
+	products   = []string{"Laptop", "Monitor 27\"", "Keyboard", "Mouse", "USB-C Hub", "Headset", "Webcam", "Docking station", "SSD 1TB", "Printer, laser"}
+	states     = []string{"open", "paid", "shipped", "cancelled", "returned"}
+	notes      = []string{"", "", "", "", "Express", "Gift wrap", "Leave with neighbour", "Invoice the company, not private", "Delivery \"urgent\""}
 )
 
 // Header is the first row of every generated table.
-var Header = []string{"bestell_id", "datum", "kunde", "stadt", "produkt", "menge", "einzelpreis", "gesamt", "status", "notiz"}
+var Header = []string{"order_id", "date", "customer", "city", "product", "quantity", "unit_price", "total", "status", "note"}
 
 type order struct {
 	id, day, qty            int

@@ -107,7 +107,7 @@ func TestSession(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer rows.Close()
-	term := &fakeTerm{steps: []step{{"row 1/5", "jjl/ende\r"}, {"row 5/5", "q"}}}
+	term := &fakeTerm{steps: []step{{"row 1/5", "jjl/end\r"}, {"row 5/5", "q"}}}
 	if err := Run(rows, "types.xlsx", term); err != nil {
 		t.Fatal(err)
 	}
