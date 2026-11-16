@@ -168,39 +168,48 @@ func (b *Book) readStrings(name string) error {
 		return err
 	}
 	defer rc.Close()
-	dec := xml.NewDecoder(rc)
-	var sb strings.Builder
+	sc := newScanner(rc, scanSize)
+	var cur []byte
 	inText, skip := false, 0
 	for {
-		tok, err := dec.Token()
+		text, err := sc.text()
 		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		switch t := tok.(type) {
-		case xml.StartElement:
-			switch t.Name.Local {
-			case "si":
-				sb.Reset()
-			case "t":
-				inText = skip == 0
-			case "rPh":
+		if inText && skip == 0 {
+			cur = unescape(cur, text)
+		}
+		tag, err := sc.tag()
+		if err != nil {
+			return err
+		}
+		name, kind := parseTag(tag)
+		if kind == otherTag {
+			if c, ok := cdata(tag); ok && inText && skip == 0 {
+				cur = append(cur, c...)
+			}
+			continue
+		}
+		switch string(name) {
+		case "si":
+			switch kind {
+			case startTag:
+				cur = cur[:0]
+			case endTag:
+				b.strings = append(b.strings, string(cur))
+			case emptyTag:
+				b.strings = append(b.strings, "")
+			}
+		case "t":
+			inText = kind == startTag
+		case "rPh":
+			if kind == startTag {
 				skip++
-			}
-		case xml.EndElement:
-			switch t.Name.Local {
-			case "si":
-				b.strings = append(b.strings, sb.String())
-			case "t":
-				inText = false
-			case "rPh":
+			} else if kind == endTag {
 				skip--
-			}
-		case xml.CharData:
-			if inText {
-				sb.Write(t)
 			}
 		}
 	}
