@@ -34,6 +34,7 @@ const (
 	recFormat    = 0x041E
 	recBOF       = 0x0809
 	biff8Version = 0x0600
+	maxCol       = 255
 )
 
 var le = binary.LittleEndian
@@ -211,6 +212,9 @@ func (b *Book) readSheet(off int) ([][]string, error) {
 	}
 	var grid [][]string
 	set := func(row, col int, s string) {
+		if col > maxCol {
+			return
+		}
 		for len(grid) <= row {
 			grid = append(grid, nil)
 		}

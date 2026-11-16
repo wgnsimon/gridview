@@ -1,71 +1,27 @@
 package xls
 
 import (
-	"fmt"
-	"io"
+	"bytes"
 	"os"
-	"slices"
-	"strconv"
 	"testing"
 
-	"gridview/internal/table"
+	"gridview/internal/reader/readertest"
 )
 
-var daten = [][]string{
-	{"Anna", "42", "2024-01-31", "13:45:00", "2024-01-31 13:45:00", "25%", "TRUE", "84", "#DIV/0!", "", "Müller ☕ 田中"},
-	{`Bo, "quoted"`, "-3.5", "1900-03-01", "", "", "12.50%", "FALSE", "0.3", "#N/A", "", "Emoji 😀"},
-	{"zwei\nZeilen", "1234567.89", "1900-02-29", "", "", "", "", `Anna-Bo, "quoted"`},
-	{},
-	{"00123", "", "", "", "", "", "", "", "", "", "Ende"},
-}
-
 func TestFixtures(t *testing.T) {
-	// LibreOffice stores 0 instead of the cached text of a string formula.
-	formula := map[string]string{"types.xls": `Anna-Bo, "quoted"`, "libreoffice.xls": "0"}
-	for _, file := range []string{"types.xls", "libreoffice.xls"} {
+	quirks := map[string]readertest.Quirks{
+		"types.xls":       readertest.Excel,
+		"libreoffice.xls": {LeapDay: "1900-02-29", Formula: "0"},
+	}
+	for file, q := range quirks {
 		t.Run(file, func(t *testing.T) {
-			daten := slices.Clone(daten)
-			daten[2] = slices.Clone(daten[2])
-			daten[2][7] = formula[file]
-			b := openBook(t, "../testdata/"+file)
-			if got, want := b.Sheets(), []string{"Daten", "Zweites Blatt", "Leer", "Viele"}; !slices.Equal(got, want) {
-				t.Fatalf("sheets = %q, want %q", got, want)
+			b, err := Open(readertest.File(t, "../testdata/"+file))
+			if err != nil {
+				t.Fatal(err)
 			}
-			header, rows := readSheet(t, b, "")
-			if want := []string{"Text", "Zahl", "Datum", "Zeit", "DatumZeit", "Prozent", "Bool", "Formel", "Fehler", "Leer", "Unicode"}; !slices.Equal(trim(header), want) {
-				t.Errorf("header = %q", header)
-			}
-			if !slices.EqualFunc(rows, daten, slices.Equal) {
-				t.Errorf("Daten rows:\n got %q\nwant %q", rows, daten)
-			}
-			header, rows = readSheet(t, b, "2")
-			if !slices.Equal(trim(header), []string{"x", "y"}) || !slices.EqualFunc(rows, [][]string{{"1", "2"}, {"2.5", "5"}}, slices.Equal) {
-				t.Errorf("Zweites Blatt = %q %q", header, rows)
-			}
-			header, rows = readSheet(t, b, "Leer")
-			if len(header) != 0 || len(rows) != 0 {
-				t.Errorf("Leer = %q %q", header, rows)
-			}
-			_, rows = readSheet(t, b, "Viele")
-			if len(rows) != 1200 {
-				t.Fatalf("Viele: %d rows", len(rows))
-			}
-			for i, row := range rows {
-				want := fmtRow(i + 1)
-				if !slices.Equal(row, want) {
-					t.Fatalf("Viele row %d = %q, want %q", i+1, row, want)
-				}
-			}
+			readertest.CheckWorkbook(t, b, q)
 		})
 	}
-}
-
-func fmtRow(i int) []string {
-	s := fmt.Sprintf("Zeile %04d äöü Größe", i)
-	if i%2 == 1 {
-		s += " €Ł"
-	}
-	return []string{strconv.Itoa(i), s}
 }
 
 func TestRK(t *testing.T) {
@@ -86,88 +42,53 @@ func TestRK(t *testing.T) {
 	}
 }
 
-func TestStrReaderAcrossContinue(t *testing.T) {
-	// "abcdef": cch 6, compressed, split after "ab"; the second part switches to UTF-16.
-	segs := [][]byte{
-		{6, 0, 0, 'a', 'b'},
-		{1, 'c', 0, 'd', 0, 'e', 0, 'f', 0},
+func TestStrReader(t *testing.T) {
+	tests := []struct {
+		name string
+		segs [][]byte
+		want []string
+	}{
+		{"compressed then utf16 after continue", [][]byte{{6, 0, 0, 'a', 'b'}, {1, 'c', 0, 'd', 0, 'e', 0, 'f', 0}}, []string{"abcdef"}},
+		{"rich runs across continue", [][]byte{{2, 0, 8, 1, 0, 'h', 'i', 1, 2}, {3, 4}, {1, 0, 0, 'x'}}, []string{"hi", "x"}},
+		{"surrogate pair across continue", [][]byte{{3, 0, 1, 0x3D, 0xD8}, {1, 0x00, 0xDE, 'x', 0}}, []string{"😀x"}},
+		{"lone surrogate", [][]byte{{2, 0, 1, 0x3D, 0xD8, 'a', 0}}, []string{"�a"}},
+		{"latin-1", [][]byte{{3, 0, 0, 'a', 0xE4, 0xFF}}, []string{"aäÿ"}},
+		{"truncated", [][]byte{{5, 0, 0, 'a'}}, nil},
 	}
-	s := &strReader{segs: segs}
-	if got, ok := s.str(false); !ok || got != "abcdef" {
-		t.Errorf("got %q, %v", got, ok)
-	}
-	rich := [][]byte{{2, 0, 8, 1, 0, 'h', 'i', 1, 2}, {3, 4}, {1, 0, 0, 'x'}}
-	s = &strReader{segs: rich}
-	if got, ok := s.str(false); !ok || got != "hi" {
-		t.Errorf("rich: got %q, %v", got, ok)
-	}
-	if got, ok := s.str(false); !ok || got != "x" {
-		t.Errorf("after rich: got %q, %v", got, ok)
-	}
-	split := [][]byte{{3, 0, 1, 0x3D, 0xD8}, {1, 0x00, 0xDE, 'x', 0}}
-	if got, ok := (&strReader{segs: split}).str(false); !ok || got != "😀x" {
-		t.Errorf("surrogate pair across continue: got %q, %v", got, ok)
-	}
-	if got, ok := (&strReader{segs: [][]byte{{2, 0, 1, 0x3D, 0xD8, 'a', 0}}}).str(false); !ok || got != "�a" {
-		t.Errorf("lone surrogate: got %q, %v", got, ok)
-	}
-	if got, ok := (&strReader{segs: [][]byte{{3, 0, 0, 'a', 0xE4, 0xFF}}}).str(false); !ok || got != "aäÿ" {
-		t.Errorf("latin-1: got %q, %v", got, ok)
-	}
-	if _, ok := (&strReader{segs: [][]byte{{5, 0, 0, 'a'}}}).str(false); ok {
-		t.Error("truncated string: want failure")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &strReader{segs: tt.segs}
+			for _, want := range tt.want {
+				if got, ok := r.str(false); !ok || got != want {
+					t.Fatalf("got %q, %v, want %q", got, ok, want)
+				}
+			}
+			if tt.want == nil {
+				if _, ok := r.str(false); ok {
+					t.Error("want failure")
+				}
+			}
+		})
 	}
 }
 
-func openBook(t *testing.T, name string) *Book {
-	t.Helper()
-	f, err := os.Open(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { f.Close() })
-	st, err := f.Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := Open(f, st.Size())
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
-func readSheet(t *testing.T, b *Book, sheet string) ([]string, [][]string) {
-	t.Helper()
-	r, err := b.Rows(sheet)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	return r.Header(), readAll(t, r)
-}
-
-func readAll(t *testing.T, r table.Rows) [][]string {
-	t.Helper()
-	var all [][]string
-	for {
-		row, err := r.Next()
-		if err == io.EOF {
-			return all
-		}
+func FuzzOpen(f *testing.F) {
+	for _, name := range []string{"../testdata/types.xls", "../testdata/libreoffice.xls"} {
+		data, err := os.ReadFile(name)
 		if err != nil {
-			t.Fatal(err)
+			f.Fatal(err)
 		}
-		all = append(all, trim(slices.Clone(row)))
+		f.Add(data)
 	}
-}
-
-func trim(row []string) []string {
-	for len(row) > 0 && row[len(row)-1] == "" {
-		row = row[:len(row)-1]
-	}
-	if row == nil {
-		return []string{}
-	}
-	return row
+	f.Fuzz(func(t *testing.T, data []byte) {
+		b, err := Open(bytes.NewReader(data), int64(len(data)))
+		if err != nil {
+			return
+		}
+		for _, name := range b.Sheets() {
+			if r, err := b.Rows(name); err == nil {
+				readertest.ReadAll(t, r)
+			}
+		}
+	})
 }

@@ -115,7 +115,7 @@ func (r *rows) readRow() (int, error) {
 				attrs(tag, func(k, v []byte) {
 					if len(k) == 1 && k[0] == 'r' {
 						if n := atoi(v); n > 0 {
-							num = n
+							num = min(n, maxRow)
 						}
 					}
 				})
@@ -264,7 +264,10 @@ func trimZeros(dst, v []byte) []byte {
 	return append(dst, v...)
 }
 
-const maxCol = 16383
+const (
+	maxCol = 16383
+	maxRow = 1 << 20
+)
 
 // column turns a cell reference like "AB12" into a 0-based column index, -1 if invalid.
 func column(ref string) int {

@@ -1,55 +1,49 @@
 package xlsx
 
 import (
+	"bytes"
 	"io"
-	"os"
 	"slices"
 	"strings"
 	"testing"
 
-	"gridview/internal/table"
+	"gridview/internal/reader/excel"
+	"gridview/internal/reader/readertest"
+	"gridview/internal/sample"
 )
 
-var daten = [][]string{
-	{"Anna", "42", "2024-01-31", "13:45:00", "2024-01-31 13:45:00", "25%", "TRUE", "84", "#DIV/0!", "", "Müller ☕ 田中"},
-	{`Bo, "quoted"`, "-3.5", "1900-03-01", "", "", "12.50%", "FALSE", "0.3", "#N/A", "", "Emoji 😀"},
-	{"zwei\nZeilen", "1234567.89", "1900-02-29", "", "", "", "", `Anna-Bo, "quoted"`},
-	{},
-	{"00123", "", "", "", "", "", "", "", "", "", "Ende"},
+func TestFixtures(t *testing.T) {
+	quirks := map[string]readertest.Quirks{
+		"types.xlsx":       readertest.Excel,
+		"libreoffice.xlsx": {LeapDay: "1900-02-28", Formula: readertest.Excel.Formula},
+	}
+	for file, q := range quirks {
+		t.Run(file, func(t *testing.T) {
+			b, err := Open(readertest.File(t, "../testdata/"+file))
+			if err != nil {
+				t.Fatal(err)
+			}
+			readertest.CheckWorkbook(t, b, q)
+		})
+	}
 }
 
-func TestFixtures(t *testing.T) {
-	// LibreOffice saves without Excel's 1900 leap day, serial 60 is Feb 28 there.
-	leap := map[string]string{"types.xlsx": "1900-02-29", "libreoffice.xlsx": "1900-02-28"}
-	for _, file := range []string{"types.xlsx", "libreoffice.xlsx"} {
-		t.Run(file, func(t *testing.T) {
-			daten := slices.Clone(daten)
-			daten[2] = slices.Clone(daten[2])
-			daten[2][2] = leap[file]
-			b := openBook(t, "../testdata/"+file)
-			if got, want := b.Sheets(), []string{"Daten", "Zweites Blatt", "Leer", "Viele"}; !slices.Equal(got, want) {
-				t.Fatalf("sheets = %q, want %q", got, want)
-			}
-			header, rows := readSheet(t, b, "")
-			if want := []string{"Text", "Zahl", "Datum", "Zeit", "DatumZeit", "Prozent", "Bool", "Formel", "Fehler", "Leer", "Unicode"}; !slices.Equal(trim(header), want) {
-				t.Errorf("header = %q", header)
-			}
-			if !slices.EqualFunc(rows, daten, slices.Equal) {
-				t.Errorf("Daten rows:\n got %q\nwant %q", rows, daten)
-			}
-			header, rows = readSheet(t, b, "2")
-			if !slices.Equal(trim(header), []string{"x", "y"}) || !slices.EqualFunc(rows, [][]string{{"1", "2"}, {"2.5", "5"}}, slices.Equal) {
-				t.Errorf("Zweites Blatt = %q %q", header, rows)
-			}
-			header, rows = readSheet(t, b, "Leer")
-			if len(header) != 0 || len(rows) != 0 {
-				t.Errorf("Leer = %q %q", header, rows)
-			}
-			header, rows = readSheet(t, b, "viele")
-			if len(rows) != 1200 || rows[0][1] != "Zeile 0001 äöü Größe €Ł" || rows[1199][0] != "1200" || rows[1199][1] != "Zeile 1200 äöü Größe" {
-				t.Errorf("Viele: %d rows, first %q, last %q", len(rows), rows[0], rows[len(rows)-1])
-			}
-		})
+func TestSampleWorkbook(t *testing.T) {
+	var buf bytes.Buffer
+	if err := sample.WriteXLSX(&buf, 300); err != nil {
+		t.Fatal(err)
+	}
+	b, err := Open(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	header, rows := readertest.Sheet(t, b, "")
+	want := sample.Rows(300)
+	for i := range want {
+		want[i] = readertest.Trim(want[i])
+	}
+	if !slices.Equal(header, sample.Header) || !slices.EqualFunc(rows, want, slices.Equal) {
+		t.Errorf("sample workbook differs, first row %q, want %q", rows[0], want[0])
 	}
 }
 
@@ -68,56 +62,20 @@ func TestNotAWorkbook(t *testing.T) {
 	}
 }
 
-func openBook(t *testing.T, name string) *Book {
-	t.Helper()
-	f, err := os.Open(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { f.Close() })
-	st, err := f.Stat()
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := Open(f, st.Size())
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
-func readSheet(t *testing.T, b *Book, sheet string) ([]string, [][]string) {
-	t.Helper()
-	r, err := b.Rows(sheet)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Close()
-	return r.Header(), readAll(t, r)
-}
-
-func readAll(t *testing.T, r table.Rows) [][]string {
-	t.Helper()
-	var all [][]string
-	for {
-		row, err := r.Next()
-		if err == io.EOF {
-			return all
-		}
+func FuzzSheet(f *testing.F) {
+	f.Add(`<sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="C1" t="inlineStr"><is><t>x&amp;y</t></is></c></row><row r="3"/></sheetData>`)
+	f.Add(`<row><c t="b"><v>1</v></c><c s="1"><v>45322.5</v></c><c t="e"><v>#N/A</v></c></row>`)
+	f.Add(`<row r="2"><c r="ZZZZZZ2"><v>1</v></c><c r="B2" t="str"><f>A1</f><v><![CDATA[<x>]]></v></c></row>`)
+	book := &Book{strings: []string{"s0"}, formats: []excel.Format{{}, {Kind: excel.Date}}}
+	f.Fuzz(func(t *testing.T, xml string) {
+		r, err := newRows(book, io.NopCloser(strings.NewReader(xml)))
 		if err != nil {
-			t.Fatal(err)
+			return
 		}
-		all = append(all, trim(slices.Clone(row)))
-	}
-}
-
-// trim drops trailing empty cells; writers differ in whether they store them.
-func trim(row []string) []string {
-	for len(row) > 0 && row[len(row)-1] == "" {
-		row = row[:len(row)-1]
-	}
-	if row == nil {
-		return []string{}
-	}
-	return row
+		for range 10000 {
+			if _, err := r.Next(); err != nil {
+				return
+			}
+		}
+	})
 }
