@@ -78,3 +78,49 @@ func TestTextShowStreamsPastSample(t *testing.T) {
 		t.Errorf("last line = %q", last)
 	}
 }
+
+func TestTextShowConfirm(t *testing.T) {
+	numbers := func(n int) [][]string {
+		rows := make([][]string, n)
+		for i := range rows {
+			rows[i] = []string{fmt.Sprint(i)}
+		}
+		return rows
+	}
+	type call struct {
+		rows int
+		more bool
+	}
+	tests := []struct {
+		name     string
+		rows     int
+		answer   bool
+		wantCall *call
+		wantOut  bool
+	}{
+		{name: "at the limit no question", rows: AskAbove, wantOut: true},
+		{name: "above the limit yes", rows: AskAbove + 1, answer: true, wantCall: &call{AskAbove + 1, false}, wantOut: true},
+		{name: "above the limit no", rows: AskAbove + 1, wantCall: &call{AskAbove + 1, false}},
+		{name: "past the sample", rows: sampleSize + 5, answer: true, wantCall: &call{sampleSize, true}, wantOut: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got *call
+			var buf bytes.Buffer
+			text := Text{W: &buf, Confirm: func(rows int, more bool) bool {
+				got = &call{rows, more}
+				return tt.answer
+			}}
+			if err := text.Show(table.FromSlices([]string{"n"}, numbers(tt.rows))); err != nil {
+				t.Fatal(err)
+			}
+			if (got == nil) != (tt.wantCall == nil) || got != nil && *got != *tt.wantCall {
+				t.Errorf("Confirm call = %v, want %v", got, tt.wantCall)
+			}
+			lines := strings.Count(buf.String(), "\n")
+			if tt.wantOut && lines != tt.rows+2 || !tt.wantOut && lines != 0 {
+				t.Errorf("printed %d lines, wantOut %v", lines, tt.wantOut)
+			}
+		})
+	}
+}

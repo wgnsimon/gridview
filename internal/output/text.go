@@ -14,6 +14,8 @@ const (
 	sampleSize = 1000
 	flushSize  = 64 << 10
 	sep        = " | "
+	// AskAbove is the row count above which Show asks Confirm first.
+	AskAbove = 250
 )
 
 // Text prints an aligned table. Widths come from the first rows,
@@ -22,6 +24,10 @@ type Text struct {
 	W io.Writer
 	// MaxWidth limits the line width, 0 means unlimited.
 	MaxWidth int
+	// Confirm, if set, is asked before printing more than AskAbove rows.
+	// rows is the number read so far, more reports that the input goes on.
+	// Show prints nothing when it returns false.
+	Confirm func(rows int, more bool) bool
 }
 
 func (t Text) Show(rows table.Rows) error {
@@ -33,6 +39,9 @@ func (t Text) Show(rows table.Rows) error {
 		return err
 	}
 	if header == nil && len(sample) == 0 {
+		return nil
+	}
+	if t.Confirm != nil && len(sample) > AskAbove && !t.Confirm(len(sample), len(sample) == sampleSize) {
 		return nil
 	}
 	cols := m.Columns()

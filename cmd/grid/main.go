@@ -35,6 +35,7 @@ type config struct {
 	sheet string
 	delim rune
 	width int
+	yes   bool
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -55,7 +56,28 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		defer restore()
 		return tui.Run(rows, title(cfg.path), term)
 	}
-	return output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout)}.Show(rows)
+	text := output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout)}
+	if !cfg.yes && isTerminal(stdout) {
+		text.Confirm = func(n int, more bool) bool {
+			return confirm(stderr, n, more)
+		}
+	}
+	return text.Show(rows)
+}
+
+// confirm asks before flooding the terminal. Without a console to ask,
+// it prints anyway.
+func confirm(w io.Writer, n int, more bool) bool {
+	count := fmt.Sprint(n)
+	if more {
+		count += "+"
+	}
+	ok, err := tui.Ask(w, fmt.Sprintf("Print %s rows? Use -view to browse instead. [y/N] ", count))
+	var pathErr *os.PathError
+	if errors.As(err, &pathErr) {
+		return true
+	}
+	return ok
 }
 
 func title(path string) string {
@@ -91,6 +113,8 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.StringVar(&delim, "d", "", "CSV delimiter, default auto (use tab for tabs)")
 	fs.IntVar(&cfg.width, "width", -1, "max line width, 0 unlimited, default terminal width")
 	fs.IntVar(&cfg.width, "w", -1, "short for -width")
+	fs.BoolVar(&cfg.yes, "yes", false, "print long tables without asking")
+	fs.BoolVar(&cfg.yes, "y", false, "short for -yes")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: grid [flags] [file]\n\nfile is a .csv, .xlsx or .xls file, - or nothing reads stdin\n\nflags:")
 		fs.PrintDefaults()
@@ -147,7 +171,7 @@ func textWidth(flagWidth int, w io.Writer) int {
 	return width
 }
 
-func isTerminal(r io.Reader) bool {
-	f, ok := r.(*os.File)
+func isTerminal(v any) bool {
+	f, ok := v.(*os.File)
 	return ok && term.IsTerminal(int(f.Fd()))
 }
