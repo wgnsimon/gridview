@@ -3,13 +3,17 @@ package tui
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"gridview/internal/reader"
 	"gridview/internal/table"
 )
 
@@ -92,4 +96,36 @@ func (*eofTerm) Read([]byte) (int, error) {
 
 func (*eofTerm) Size() (int, int, error) {
 	return 20, 5, nil
+}
+
+var update = flag.Bool("update", false, "rewrite the golden files")
+
+// TestSession drives the view over a real workbook and compares the final screen.
+func TestSession(t *testing.T) {
+	rows, err := reader.Open("../reader/testdata/types.xlsx", reader.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	term := &fakeTerm{steps: []step{{"row 1/5", "jjl/ende\r"}, {"row 5/5", "q"}}}
+	if err := Run(rows, "types.xlsx", term); err != nil {
+		t.Fatal(err)
+	}
+	frames := strings.Split(term.output(), "\x1b[?2026h")
+	got := ansi.ReplaceAllString(frames[len(frames)-1], "")
+	got = strings.ReplaceAll(got, "\r\n", "\n")
+	path := filepath.Join("testdata", "session.golden")
+	if *update {
+		os.MkdirAll("testdata", 0o755)
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != string(want) {
+		t.Errorf("screen differs from %s:\n%s", path, got)
+	}
 }

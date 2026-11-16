@@ -157,39 +157,53 @@ func screen(m *model) []string {
 }
 
 func TestRender(t *testing.T) {
-	m := newTestModel(3, 3, 30, 6)
-	m.cols[2].Right = true
-	press(m, runes("jl")...)
-	want := []string{
-		"  │ col0 │ col1 │ col2",
-		"1 │ r0c0 │ r0c1 │ r0c2",
-		"2 │ r1c0 │ r1c1 │ r1c2",
-		"3 │ r2c0 │ r2c1 │ r2c2",
-		"",
-		" t.csv   row 2/3   col 2/3 co…",
+	tests := []struct {
+		name          string
+		rows, cols    int
+		width, height int
+		keys          string
+		want          []string
+	}{
+		{"cursor row and column", 3, 3, 30, 6, "jl", []string{
+			"  │ col0 │ col1 │ col2",
+			"1 │ r0c0 │ r0c1 │ r0c2",
+			"2 │ r1c0 │ r1c1 │ r1c2",
+			"3 │ r2c0 │ r2c1 │ r2c2",
+			"",
+			" t.csv   row 2/3   col 2/3 co…",
+		}},
+		{"cuts last column", 1, 3, 20, 4, "", []string{
+			"  │ col0 │ col1 │ c…",
+			"1 │ r0c0 │ r0c1 │ r…",
+			"",
+			" t.csv   row 1/1   …",
+		}},
+		{"scrolled right", 2, 6, 20, 4, "$", []string{
+			"  │ col4 │ col5",
+			"1 │ r0c4 │ r0c5",
+			"2 │ r1c4 │ r1c5",
+			" t.csv   row 1/2   …",
+		}},
+		{"empty", 0, 0, 20, 4, "", []string{
+			"  │ ",
+			"",
+			"",
+			" t.csv   row 0/0   …",
+		}},
 	}
-	got := screen(m)
-	if strings.Join(got, "\n") != strings.Join(want, "\n") {
-		t.Errorf("got:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
-	}
-	for i, line := range got {
-		if w := layout.Width(line); w > m.width {
-			t.Errorf("line %d is %d wide", i, w)
-		}
-	}
-}
-
-func TestRenderCutsLastColumn(t *testing.T) {
-	m := newTestModel(1, 3, 20, 4)
-	if got := screen(m)[1]; got != "1 │ r0c0 │ r0c1 │ r…" {
-		t.Errorf("got %q", got)
-	}
-}
-
-func TestRenderEmpty(t *testing.T) {
-	m := newTestModel(0, 0, 20, 4)
-	got := screen(m)
-	if len(got) != 4 || !strings.Contains(got[3], "row 0/0") {
-		t.Errorf("got %q", got)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := newTestModel(tt.rows, tt.cols, tt.width, tt.height)
+			press(m, runes(tt.keys)...)
+			got := screen(m)
+			if g, w := strings.Join(got, "\n"), strings.Join(tt.want, "\n"); g != w {
+				t.Errorf("got:\n%s\nwant:\n%s", g, w)
+			}
+			for i, line := range got {
+				if w := layout.Width(line); w > m.width {
+					t.Errorf("line %d is %d wide", i, w)
+				}
+			}
+		})
 	}
 }
