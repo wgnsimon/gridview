@@ -122,7 +122,7 @@ func (b *Book) Rows(sheet string) (table.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newRows(b, rc)
+	return newRows(b, newPrefetch(rc, 256<<10, 3))
 }
 
 func (b *Book) decode(name string, v any) error {
@@ -167,8 +167,9 @@ func (b *Book) readStrings(name string) error {
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
-	sc := newScanner(rc, scanSize)
+	pf := newPrefetch(rc, 256<<10, 3)
+	defer pf.Close()
+	sc := newScanner(pf, scanSize)
 	var cur []byte
 	inText, skip := false, 0
 	for {
