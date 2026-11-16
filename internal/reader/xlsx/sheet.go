@@ -236,7 +236,7 @@ func (r *rows) number(dst []byte, style int) []byte {
 	if err != nil {
 		return append(dst, r.val...)
 	}
-	return append(dst, excel.FormatNumber(v, f, r.b.dates)...)
+	return excel.AppendNumber(dst, v, f, r.b.dates)
 }
 
 // plain reports whether v is a decimal without exponent and at most 15 digits,

@@ -1,6 +1,9 @@
 package excel
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestParseFormat(t *testing.T) {
 	tests := []struct {
@@ -66,6 +69,16 @@ func TestFormatNumber(t *testing.T) {
 	for _, tt := range tests {
 		if got := FormatNumber(tt.v, tt.f, tt.ds); got != tt.want {
 			t.Errorf("FormatNumber(%v, %+v, %v) = %q, want %q", tt.v, tt.f, tt.ds, got, tt.want)
+		}
+	}
+}
+
+func TestCivilMatchesTime(t *testing.T) {
+	for days := int64(-30000); days < 120000; days += 7 {
+		y, m, d := civil(days)
+		want := time.Unix(days*86400, 0).UTC()
+		if int(y) != want.Year() || time.Month(m) != want.Month() || int(d) != want.Day() {
+			t.Fatalf("civil(%d) = %d-%d-%d, want %s", days, y, m, d, want.Format("2006-01-02"))
 		}
 	}
 }

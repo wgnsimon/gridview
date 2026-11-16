@@ -5,7 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
+	"unsafe"
 )
 
 type Kind uint8
@@ -155,31 +155,44 @@ func firstSection(code string) string {
 
 // FormatNumber renders v as text according to f.
 func FormatNumber(v float64, f Format, ds DateSystem) string {
+	var buf [32]byte
+	return string(AppendNumber(buf[:0], v, f, ds))
+}
+
+// AppendNumber appends v rendered according to f.
+func AppendNumber(dst []byte, v float64, f Format, ds DateSystem) []byte {
 	switch f.Kind {
 	case Fixed:
-		return strconv.FormatFloat(v, 'f', f.Decimals, 64)
+		return strconv.AppendFloat(dst, v, 'f', f.Decimals, 64)
 	case Percent:
-		return strconv.FormatFloat(v*100, 'f', f.Decimals, 64) + "%"
+		return append(strconv.AppendFloat(dst, v*100, 'f', f.Decimals, 64), '%')
 	case Date:
-		return datePart(v, ds)
+		return appendDate(dst, v, ds)
 	case Time:
-		return clockPart(v)
+		return appendClock(dst, v)
 	case DateTime:
-		return datePart(v, ds) + " " + clockPart(v)
+		return appendClock(append(appendDate(dst, v, ds), ' '), v)
 	}
-	return GeneralNumber(v)
+	return appendGeneral(dst, v)
 }
 
 // GeneralNumber renders v like Excel's General format with 15 significant digits.
 func GeneralNumber(v float64) string {
+	var buf [32]byte
+	return string(appendGeneral(buf[:0], v))
+}
+
+func appendGeneral(dst []byte, v float64) []byte {
 	if math.IsInf(v, 0) || math.IsNaN(v) {
-		return strconv.FormatFloat(v, 'g', -1, 64)
+		return strconv.AppendFloat(dst, v, 'g', -1, 64)
 	}
-	r, _ := strconv.ParseFloat(strconv.FormatFloat(v, 'g', 15, 64), 64)
+	var buf [32]byte
+	g := strconv.AppendFloat(buf[:0], v, 'g', 15, 64)
+	r, _ := strconv.ParseFloat(unsafe.String(&g[0], len(g)), 64)
 	if a := math.Abs(r); a >= 1e15 || (a != 0 && a < 1e-9) {
-		return strconv.FormatFloat(r, 'g', -1, 64)
+		return strconv.AppendFloat(dst, r, 'g', -1, 64)
 	}
-	return strconv.FormatFloat(r, 'f', -1, 64)
+	return strconv.AppendFloat(dst, r, 'f', -1, 64)
 }
 
 func seconds(v float64) (days, secs int64) {
@@ -187,33 +200,65 @@ func seconds(v float64) (days, secs int64) {
 	return total / 86400, total % 86400
 }
 
-func datePart(v float64, ds DateSystem) string {
+// Day numbers of the epochs, counted from 1970-01-01.
+const (
+	epoch1899 = -25569
+	epoch1900 = -25568
+	epoch1904 = -24107
+)
+
+func appendDate(dst []byte, v float64, ds DateSystem) []byte {
 	days, _ := seconds(v)
-	var epoch time.Time
 	switch {
 	case ds == Date1904:
-		epoch = time.Date(1904, 1, 1, 0, 0, 0, 0, time.UTC)
+		days += epoch1904
 	case ds == Date1900 && days == 60:
-		return "1900-02-29"
+		return append(dst, "1900-02-29"...)
 	case ds == Date1900 && days < 60:
-		epoch = time.Date(1899, 12, 31, 0, 0, 0, 0, time.UTC)
+		days += epoch1900
 	default:
-		epoch = time.Date(1899, 12, 30, 0, 0, 0, 0, time.UTC)
+		days += epoch1899
 	}
-	return epoch.AddDate(0, 0, int(days)).Format("2006-01-02")
+	y, m, d := civil(days)
+	if y < 0 || y > 9999 {
+		dst = strconv.AppendInt(dst, y, 10)
+	} else {
+		dst = appendTwo(appendTwo(dst, y/100), y%100)
+	}
+	return appendTwo(append(appendTwo(append(dst, '-'), m), '-'), d)
 }
 
-func clockPart(v float64) string {
+// civil converts days since 1970-01-01 to a proleptic Gregorian date.
+func civil(z int64) (y, m, d int64) {
+	z += 719468
+	era := z / 146097
+	if z < 0 && z%146097 != 0 {
+		era--
+	}
+	doe := z - era*146097
+	yoe := (doe - doe/1460 + doe/36524 - doe/146096) / 365
+	doy := doe - (365*yoe + yoe/4 - yoe/100)
+	mp := (5*doy + 2) / 153
+	d = doy - (153*mp+2)/5 + 1
+	m = mp + 3
+	if m > 12 {
+		m -= 12
+	}
+	y = yoe + era*400
+	if m <= 2 {
+		y++
+	}
+	return y, m, d
+}
+
+func appendClock(dst []byte, v float64) []byte {
 	_, secs := seconds(v)
 	if secs < 0 {
 		secs += 86400
 	}
-	b := make([]byte, 0, 8)
-	b = appendTwo(b, secs/3600)
-	b = append(b, ':')
-	b = appendTwo(b, secs/60%60)
-	b = append(b, ':')
-	return string(appendTwo(b, secs%60))
+	dst = append(appendTwo(dst, secs/3600), ':')
+	dst = append(appendTwo(dst, secs/60%60), ':')
+	return appendTwo(dst, secs%60)
 }
 
 func appendTwo(b []byte, n int64) []byte {
