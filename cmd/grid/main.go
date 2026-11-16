@@ -1,0 +1,139 @@
+// Command grid prints CSV, xlsx and xls files as tables.
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"unicode/utf8"
+
+	"golang.org/x/term"
+
+	"gridview/internal/output"
+	"gridview/internal/reader"
+	"gridview/internal/table"
+)
+
+func main() {
+	err := run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr)
+	if errors.Is(err, flag.ErrHelp) {
+		return
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "grid:", err)
+		os.Exit(1)
+	}
+}
+
+type config struct {
+	path  string
+	view  bool
+	sheet string
+	delim rune
+	width int
+}
+
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	cfg, err := parseArgs(args, stderr)
+	if err != nil {
+		return err
+	}
+	rows, err := open(cfg, stdin)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	if cfg.view {
+		return errors.New("-view is not implemented yet")
+	}
+	return output.Text{W: stdout, MaxWidth: textWidth(cfg.width, stdout)}.Show(rows)
+}
+
+func open(cfg config, stdin io.Reader) (table.Rows, error) {
+	opt := reader.Options{Delimiter: cfg.delim, Sheet: cfg.sheet}
+	switch cfg.path {
+	case "":
+		if isTerminal(stdin) {
+			return nil, errors.New("no file given, see grid -h")
+		}
+		return reader.OpenReader(stdin, opt)
+	case "-":
+		return reader.OpenReader(stdin, opt)
+	}
+	return reader.Open(cfg.path, opt)
+}
+
+func parseArgs(args []string, stderr io.Writer) (config, error) {
+	var cfg config
+	var delim string
+	fs := flag.NewFlagSet("grid", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	fs.BoolVar(&cfg.view, "view", false, "interactive view")
+	fs.BoolVar(&cfg.view, "v", false, "short for -view")
+	fs.StringVar(&cfg.sheet, "sheet", "", "sheet name or 1-based index (xlsx, xls)")
+	fs.StringVar(&cfg.sheet, "s", "", "short for -sheet")
+	fs.StringVar(&delim, "d", "", "CSV delimiter, default auto (use tab for tabs)")
+	fs.IntVar(&cfg.width, "width", -1, "max line width, 0 unlimited, default terminal width")
+	fs.IntVar(&cfg.width, "w", -1, "short for -width")
+	fs.Usage = func() {
+		fmt.Fprintln(stderr, "usage: grid [flags] [file]\n\nfile is a .csv, .xlsx or .xls file, - or nothing reads stdin\n\nflags:")
+		fs.PrintDefaults()
+	}
+	var pos []string
+	for {
+		if err := fs.Parse(args); err != nil {
+			return cfg, err
+		}
+		args = fs.Args()
+		if len(args) == 0 {
+			break
+		}
+		pos = append(pos, args[0])
+		args = args[1:]
+	}
+	if len(pos) > 1 {
+		return cfg, fmt.Errorf("expected one file, got %d", len(pos))
+	}
+	if len(pos) == 1 {
+		cfg.path = pos[0]
+	}
+	d, err := parseDelim(delim)
+	cfg.delim = d
+	return cfg, err
+}
+
+func parseDelim(s string) (rune, error) {
+	switch s {
+	case "":
+		return 0, nil
+	case "tab", `\t`:
+		return '\t', nil
+	}
+	r, n := utf8.DecodeRuneInString(s)
+	if n != len(s) || r == '"' || r == '\n' || r == '\r' || r == utf8.RuneError {
+		return 0, fmt.Errorf("invalid delimiter %q", s)
+	}
+	return r, nil
+}
+
+func textWidth(flagWidth int, w io.Writer) int {
+	if flagWidth >= 0 {
+		return flagWidth
+	}
+	f, ok := w.(*os.File)
+	if !ok || !term.IsTerminal(int(f.Fd())) {
+		return 0
+	}
+	width, _, err := term.GetSize(int(f.Fd()))
+	if err != nil {
+		return 0
+	}
+	return width
+}
+
+func isTerminal(r io.Reader) bool {
+	f, ok := r.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}

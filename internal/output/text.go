@@ -1,0 +1,90 @@
+// Package output prints table.Rows as plain text.
+package output
+
+import (
+	"fmt"
+	"io"
+	"slices"
+
+	"gridview/internal/layout"
+	"gridview/internal/table"
+)
+
+const (
+	sampleSize = 1000
+	flushSize  = 64 << 10
+	sep        = " | "
+)
+
+// Text prints an aligned table. Widths come from the first rows,
+// later rows stream through without being kept in memory.
+type Text struct {
+	W io.Writer
+	// MaxWidth limits the line width, 0 means unlimited.
+	MaxWidth int
+}
+
+func (t Text) Show(rows table.Rows) error {
+	header := rows.Header()
+	var m layout.Measure
+	m.AddHeader(header)
+	sample, err := readSample(rows, &m)
+	if err != nil {
+		return err
+	}
+	if header == nil && len(sample) == 0 {
+		return nil
+	}
+	cols := m.Columns()
+	hidden := 0
+	if t.MaxWidth > 0 {
+		n := layout.Fit(cols, t.MaxWidth, len(sep))
+		hidden = len(cols) - n
+		cols = cols[:n]
+	}
+	f := layout.Formatter{Cols: cols, Sep: sep, Cut: t.MaxWidth > 0}
+	buf := make([]byte, 0, flushSize+4096)
+	buf = append(f.AppendRow(buf, header), '\n')
+	buf = append(f.AppendRule(buf), '\n')
+	for _, row := range sample {
+		buf = append(f.AppendRow(buf, row), '\n')
+	}
+	for len(sample) == sampleSize {
+		row, err := rows.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		buf = append(f.AppendRow(buf, row), '\n')
+		if len(buf) >= flushSize {
+			if _, err := t.W.Write(buf); err != nil {
+				return err
+			}
+			buf = buf[:0]
+		}
+	}
+	if hidden > 0 {
+		buf = fmt.Appendf(buf, "(%d more columns, use a wider terminal or -view)\n", hidden)
+	}
+	_, err = t.W.Write(buf)
+	return err
+}
+
+func readSample(rows table.Rows, m *layout.Measure) ([][]string, error) {
+	var sample [][]string
+	for len(sample) < sampleSize {
+		row, err := rows.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		row = slices.Clone(row)
+		m.Add(row)
+		sample = append(sample, row)
+	}
+	return sample, nil
+}

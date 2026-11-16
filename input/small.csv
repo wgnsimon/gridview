@@ -1,0 +1,12 @@
+id,name,stadt,abteilung,gehalt,eintritt,aktiv,notiz
+1,Anna Müller,München,Entwicklung,5200.50,2019-03-01,true,
+2,Jörg Weiß,Köln,Vertrieb,4100.00,2021-07-15,true,Spricht Französisch
+3,"Schmidt, Peter",Berlin,Entwicklung,6100.75,2015-01-10,false,"Hat ""Teamlead"" Titel"
+4,Lena Groß,Düsseldorf,Marketing,3900.00,2023-11-20,true,"Mehrzeilige
+Notiz in einem Feld"
+5,Ömer Yılmaz,Hamburg,Support,3500.25,2020-05-05,true,Mag Kaffee ☕
+6,Zoë Chen,Frankfurt am Main,Entwicklung,7300.00,2012-09-30,true,Eine sehr lange Notiz die deutlich breiter ist als alle anderen Spalten und beim Abschneiden auf Terminalbreite hilft
+7,Max Mustermann,Stuttgart,,0.00,2024-01-01,false,Abteilung fehlt
+8,田中 太郎,Leipzig,Entwicklung,5800.00,2018-04-12,true,Breite asiatische Zeichen
+9,Sophie Bauer,Dresden,Finanzen,-120.00,2022-02-28,true,Negatives Gehalt (Korrekturbuchung)
+10,"O'Brien, Liam",Bremen,Vertrieb,4450.10,2017-08-08,true,"Komma, Semikolon; und Tab	drin"

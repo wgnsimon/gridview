@@ -1,0 +1,15 @@
+# build output
+/grid
+/grid.exe
+
+# profiling / test output
+*.out
+*.prof
+*.test
+
+# large generated test data
+/input/large.csv
+
+# JetBrains: keep project files, ignore personal workspace state
+.idea/workspace.xml
+.idea/shelf/
