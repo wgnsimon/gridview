@@ -2,3 +2,4 @@
 *.xlsx binary
 *.xls binary
 internal/reader/testdata/** -text
+cmd/grid/testdata/** -text

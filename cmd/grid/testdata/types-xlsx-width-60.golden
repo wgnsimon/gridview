@@ -1,0 +1,8 @@
+Text    |   Zahl | Datum  | Zeit   | Datum… | Proze… | Bool
+--------+--------+--------+--------+--------+--------+------
+Anna    |     42 | 2024-… | 13:45… | 2024-… |    25% | TRUE
+Bo, "q… |   -3.5 | 1900-… |        |        | 12.50% | FALSE
+zwei↵Z… | 12345… | 1900-… |        |        |        | 
+        |        |        |        |        |        | 
+00123   |        |        |        |        |        | 
+(4 more columns, use a wider terminal or -view)
