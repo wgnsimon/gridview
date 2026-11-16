@@ -104,6 +104,16 @@ func TestStrReaderAcrossContinue(t *testing.T) {
 	if got, ok := s.str(false); !ok || got != "x" {
 		t.Errorf("after rich: got %q, %v", got, ok)
 	}
+	split := [][]byte{{3, 0, 1, 0x3D, 0xD8}, {1, 0x00, 0xDE, 'x', 0}}
+	if got, ok := (&strReader{segs: split}).str(false); !ok || got != "😀x" {
+		t.Errorf("surrogate pair across continue: got %q, %v", got, ok)
+	}
+	if got, ok := (&strReader{segs: [][]byte{{2, 0, 1, 0x3D, 0xD8, 'a', 0}}}).str(false); !ok || got != "�a" {
+		t.Errorf("lone surrogate: got %q, %v", got, ok)
+	}
+	if got, ok := (&strReader{segs: [][]byte{{3, 0, 0, 'a', 0xE4, 0xFF}}}).str(false); !ok || got != "aäÿ" {
+		t.Errorf("latin-1: got %q, %v", got, ok)
+	}
 	if _, ok := (&strReader{segs: [][]byte{{5, 0, 0, 'a'}}}).str(false); ok {
 		t.Error("truncated string: want failure")
 	}

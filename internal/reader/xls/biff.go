@@ -8,6 +8,7 @@ import (
 	"math"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	"gridview/internal/reader/excel"
 	"gridview/internal/table"
@@ -341,10 +342,10 @@ func boolErr(v byte, isErr bool) string {
 
 // strReader reads BIFF8 strings that may be split over CONTINUE records.
 type strReader struct {
-	segs  [][]byte
-	i     int
-	pos   int
-	units []uint16
+	segs [][]byte
+	i    int
+	pos  int
+	out  []byte
 }
 
 func (r *strReader) u8() (byte, bool) {
@@ -414,7 +415,8 @@ func (r *strReader) str(short bool) (string, bool) {
 		ext = int(le.Uint32(e[:]))
 	}
 	wide := flags&1 != 0
-	r.units = r.units[:0]
+	r.out = r.out[:0]
+	var high rune
 	for need := cch; need > 0; {
 		if r.i >= len(r.segs) {
 			return "", false
@@ -429,28 +431,52 @@ func (r *strReader) str(short bool) (string, bool) {
 			continue
 		}
 		seg := r.segs[r.i][r.pos:]
-		if wide {
-			n := min(need, len(seg)/2)
-			if n == 0 {
-				r.pos = len(r.segs[r.i])
-				continue
-			}
-			for k := range n {
-				r.units = append(r.units, le.Uint16(seg[2*k:]))
-			}
-			r.pos += 2 * n
-			need -= n
-		} else {
+		if !wide {
 			n := min(need, len(seg))
 			for _, c := range seg[:n] {
-				r.units = append(r.units, uint16(c))
+				if c < utf8.RuneSelf {
+					r.out = append(r.out, c)
+				} else {
+					r.out = utf8.AppendRune(r.out, rune(c))
+				}
 			}
 			r.pos += n
 			need -= n
+			continue
 		}
+		n := min(need, len(seg)/2)
+		if n == 0 {
+			r.pos = len(r.segs[r.i])
+			continue
+		}
+		for k := range n {
+			u := rune(le.Uint16(seg[2*k:]))
+			switch {
+			case high != 0 && utf16.IsSurrogate(u) && u >= 0xDC00:
+				r.out = utf8.AppendRune(r.out, utf16.DecodeRune(high, u))
+				high = 0
+				continue
+			case high != 0:
+				r.out = utf8.AppendRune(r.out, utf8.RuneError)
+				high = 0
+			}
+			switch {
+			case u >= 0xD800 && u < 0xDC00:
+				high = u
+			case utf16.IsSurrogate(u):
+				r.out = utf8.AppendRune(r.out, utf8.RuneError)
+			default:
+				r.out = utf8.AppendRune(r.out, u)
+			}
+		}
+		r.pos += 2 * n
+		need -= n
+	}
+	if high != 0 {
+		r.out = utf8.AppendRune(r.out, utf8.RuneError)
 	}
 	if !r.skip(4*runs + ext) {
 		return "", false
 	}
-	return string(utf16.Decode(r.units)), true
+	return string(r.out), true
 }

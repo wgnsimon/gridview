@@ -3,6 +3,7 @@ package xls
 
 import (
 	"encoding/binary"
+	"slices"
 	"errors"
 	"fmt"
 	"io"
@@ -51,7 +52,7 @@ func openCFB(r io.ReaderAt, size int64) (*cfb, error) {
 	if err := c.readFAT(h); err != nil {
 		return nil, err
 	}
-	dir, err := c.chain(le.Uint32(h[48:]))
+	dir, err := c.chain(le.Uint32(h[48:]), 0)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func openCFB(r io.ReaderAt, size int64) (*cfb, error) {
 		return nil, errCorrupt
 	}
 	if n := le.Uint32(h[64:]); n > 0 {
-		mf, err := c.chain(le.Uint32(h[60:]))
+		mf, err := c.chain(le.Uint32(h[60:]), int(n)<<c.shift)
 		if err != nil {
 			return nil, err
 		}
@@ -128,24 +129,30 @@ func (c *cfb) sector(n uint32) ([]byte, error) {
 	return buf, nil
 }
 
-func (c *cfb) chain(start uint32) ([]byte, error) {
-	var out []byte
+// chain reads a sector chain; size is a capacity hint.
+func (c *cfb) chain(start uint32, size int) ([]byte, error) {
+	ss := c.sectorSize()
+	out := make([]byte, 0, min(size, int(c.size))+ss)
 	for n, steps := start, 0; n != endOfChain; steps++ {
 		if int(n) >= len(c.fat) || steps > len(c.fat) {
 			return nil, errCorrupt
 		}
-		buf, err := c.sector(n)
-		if err != nil {
-			return nil, err
+		off := (int64(n) + 1) << c.shift
+		if off < 0 || off >= c.size {
+			return nil, errCorrupt
 		}
-		out = append(out, buf...)
+		k := len(out)
+		out = slices.Grow(out, ss)[:k+ss]
+		if m, err := c.r.ReadAt(out[k:], off); err != nil && (err != io.EOF || m == 0) {
+			return nil, errCorrupt
+		}
 		n = c.fat[n]
 	}
 	return out, nil
 }
 
 func (c *cfb) miniChain(start uint32, size uint64) ([]byte, error) {
-	stream, err := c.chain(c.dir[0].start)
+	stream, err := c.chain(c.dir[0].start, int(min(c.dir[0].size, uint64(c.size))))
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +184,7 @@ func (c *cfb) stream(names ...string) ([]byte, string, error) {
 			if e.size < uint64(c.cutoff) {
 				data, err = c.miniChain(e.start, e.size)
 			} else {
-				data, err = c.chain(e.start)
+				data, err = c.chain(e.start, int(min(e.size, uint64(c.size))))
 			}
 			if err != nil {
 				return nil, "", err
