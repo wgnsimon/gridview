@@ -23,6 +23,11 @@ const ellipsis = "…"
 
 // AppendRow appends row without a trailing newline. The last column is not padded.
 func (f *Formatter) AppendRow(dst []byte, row []string) []byte {
+	return f.AppendMarked(dst, row, -1, "", "")
+}
+
+// AppendMarked is AppendRow with column mark wrapped in the on and off sequences.
+func (f *Formatter) AppendMarked(dst []byte, row []string, mark int, on, off string) []byte {
 	for i, c := range f.Cols {
 		if i > 0 {
 			dst = append(dst, f.Sep...)
@@ -31,7 +36,13 @@ func (f *Formatter) AppendRow(dst []byte, row []string) []byte {
 		if i < len(row) {
 			s = row[i]
 		}
+		if i == mark {
+			dst = append(dst, on...)
+		}
 		dst = appendCell(dst, s, c, f.Cut, i < len(f.Cols)-1)
+		if i == mark {
+			dst = append(dst, off...)
+		}
 	}
 	return dst
 }

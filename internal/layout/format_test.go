@@ -29,6 +29,13 @@ func TestAppendRow(t *testing.T) {
 	}
 }
 
+func TestAppendMarked(t *testing.T) {
+	f := Formatter{Cols: []Column{{2, false}, {2, false}}, Sep: "|"}
+	if got := string(f.AppendMarked(nil, []string{"a", "b"}, 1, "<", ">")); got != "a |<b>" {
+		t.Errorf("got %q", got)
+	}
+}
+
 func TestAppendRule(t *testing.T) {
 	f := Formatter{Cols: []Column{{2, false}, {3, true}}, Sep: " | "}
 	if got := string(f.AppendRule(nil)); got != "---+----" {
