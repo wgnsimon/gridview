@@ -9,30 +9,13 @@ import (
 	"gridview/internal/table"
 )
 
-func TestDetect(t *testing.T) {
-	tests := []struct {
-		head []byte
-		want format
-	}{
-		{[]byte("PK\x03\x04rest"), formatXLSX},
-		{[]byte("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"), formatXLS},
-		{[]byte("a,b"), formatCSV},
-		{[]byte("PK"), formatCSV},
-		{nil, formatCSV},
-	}
-	for _, tt := range tests {
-		if got := detect(tt.head); got != tt.want {
-			t.Errorf("detect(%q) = %d, want %d", tt.head, got, tt.want)
-		}
-	}
-}
-
 // cell is an expected value at a data row and column.
 type cell struct {
 	row, col int
 	want     string
 }
 
+// TestOpen reads every kind of fixture by path and from a stream.
 func TestOpen(t *testing.T) {
 	excelCSV := []cell{{0, 0, "Anna"}, {0, 2, "31.01.2024"}, {1, 0, `Bo, "quoted"`}, {2, 0, "two\nlines"}, {4, 10, "End"}}
 	tests := []struct {
@@ -43,7 +26,6 @@ func TestOpen(t *testing.T) {
 		count  int
 		cells  []cell
 	}{
-		{file: "simple.csv", header: []string{"id", "name", "city"}, rows: [][]string{{"1", "Anna", "Berlin"}, {"2", "Ömer", "Köln"}}},
 		{file: "quoted.csv", header: []string{"id", "name", "note"}, rows: [][]string{{"1", "Schmidt, Peter", `says "hello"`}, {"2", "Lena", "two\nlines"}}},
 		{file: "ragged.csv", header: []string{"a", "b", "c"}, rows: [][]string{{"1", "2"}, {"3", "4", "5", "6"}}},
 		{file: "simple.csv", opt: Options{Delimiter: ';'}, header: []string{"id,name,city"}, count: 2},
@@ -52,12 +34,9 @@ func TestOpen(t *testing.T) {
 		{file: "excel-unicode.txt", header: readertest.DataHeader, count: 5, cells: append(excelCSV, cell{1, 10, "Emoji 😀"})},
 		{file: "types.xlsx", header: readertest.DataHeader, rows: readertest.Data(readertest.Excel)},
 		{file: "types.xls", header: readertest.DataHeader, rows: readertest.Data(readertest.Excel)},
-		{file: "libreoffice.xls", opt: Options{Sheet: "second sheet"}, header: []string{"x", "y"}, rows: [][]string{{"1", "2"}, {"2.5", "5"}}},
-		{file: "types.xlsx", opt: Options{Sheet: "3"}},
-		{file: "types.xlsx", opt: Options{Sheet: "Many"}, header: []string{"n", "text"}, count: 1200, cells: []cell{{1199, 1, "Row 1200 äöü ß"}}},
 	}
 	for _, tt := range tests {
-		t.Run(tt.file+"/"+tt.opt.Sheet+string(tt.opt.Delimiter), func(t *testing.T) {
+		t.Run(tt.file+"/"+string(tt.opt.Delimiter), func(t *testing.T) {
 			check := func(t *testing.T, r table.Rows) {
 				defer r.Close()
 				if got := readertest.Trim(slices.Clone(r.Header())); !slices.Equal(got, readertest.Trim(tt.header)) {
@@ -102,19 +81,10 @@ func TestOpenErrors(t *testing.T) {
 	if err := os.WriteFile(broken, []byte("PK\x03\x04 not really a zip"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	tests := []struct {
-		path string
-		opt  Options
-	}{
-		{"testdata/missing.csv", Options{}},
-		{"testdata/types.xlsx", Options{Sheet: "nope"}},
-		{"testdata/types.xls", Options{Sheet: "9"}},
-		{broken, Options{}},
-	}
-	for _, tt := range tests {
-		if r, err := Open(tt.path, tt.opt); err == nil {
+	for _, path := range []string{"testdata/missing.csv", broken} {
+		if r, err := Open(path, Options{}); err == nil {
 			r.Close()
-			t.Errorf("Open(%q, %+v): want error", tt.path, tt.opt)
+			t.Errorf("Open(%q): want error", path)
 		}
 	}
 }

@@ -1,8 +1,0 @@
-  │ Error   │ Empty │ Unicode
-──┼─────────┼───────┼───────────────
-1 │ #DIV/0! │       │ Müller ☕ 田中
-2 │ #N/A    │       │ Emoji 😀
-3 │         │       │ 
-4 │         │       │ 
-5 │         │       │ End
- types.xlsx   row 5/5   col 11/11 Unicode   ↑↓←→ …

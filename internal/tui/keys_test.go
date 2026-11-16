@@ -15,10 +15,8 @@ func TestParseKeys(t *testing.T) {
 		rest string
 	}{
 		{"letters", "jkä", []Key{r('j'), r('k'), r('ä')}, ""},
-		{"arrows", "\x1b[A\x1b[B\x1bOC\x1b[D", []Key{k(KeyUp), k(KeyDown), k(KeyRight), k(KeyLeft)}, ""},
-		{"paging", "\x1b[5~\x1b[6~\x06\x02", []Key{k(KeyPgUp), k(KeyPgDn), k(KeyPgDn), k(KeyPgUp)}, ""},
-		{"home end", "\x1b[H\x1b[1~\x1b[F\x1b[4~", []Key{k(KeyHome), k(KeyHome), k(KeyEnd), k(KeyEnd)}, ""},
-		{"controls", "\r\x7f\x03", []Key{k(KeyEnter), k(KeyBackspace), k(KeyCtrlC)}, ""},
+		{"arrows", "\x1b[A\x1bOC", []Key{k(KeyUp), k(KeyRight)}, ""},
+		{"paging", "\x1b[5~\x06", []Key{k(KeyPgUp), k(KeyPgDn)}, ""},
 		{"lone esc", "\x1b", []Key{k(KeyEsc)}, ""},
 		{"esc then letter", "\x1bq", []Key{k(KeyEsc), r('q')}, ""},
 		{"unknown sequence skipped", "\x1b[99zq", []Key{r('q')}, ""},

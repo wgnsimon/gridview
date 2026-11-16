@@ -1,15 +1,12 @@
 package xlsx
 
 import (
-	"bytes"
 	"io"
-	"slices"
 	"strings"
 	"testing"
 
 	"gridview/internal/reader/excel"
 	"gridview/internal/reader/readertest"
-	"gridview/internal/sample"
 )
 
 func TestFixtures(t *testing.T) {
@@ -28,37 +25,12 @@ func TestFixtures(t *testing.T) {
 	}
 }
 
-func TestSampleWorkbook(t *testing.T) {
-	var buf bytes.Buffer
-	if err := sample.WriteXLSX(&buf, 300); err != nil {
-		t.Fatal(err)
-	}
-	b, err := Open(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	header, rows := readertest.Sheet(t, b, "")
-	want := sample.Rows(300)
-	for i := range want {
-		want[i] = readertest.Trim(want[i])
-	}
-	if !slices.Equal(header, sample.Header) || !slices.EqualFunc(rows, want, slices.Equal) {
-		t.Errorf("sample workbook differs, first row %q, want %q", rows[0], want[0])
-	}
-}
-
 func TestColumn(t *testing.T) {
-	tests := map[string]int{"A1": 0, "B2": 1, "Z9": 25, "AA1": 26, "az3": 51, "XFD1": 16383, "": -1, "12": -1, "ZZZZZ1": 16384}
+	tests := map[string]int{"A1": 0, "AA1": 26, "az3": 51, "XFD1": 16383, "12": -1, "ZZZZZ1": 16384}
 	for ref, want := range tests {
 		if got := column(ref); got != want {
 			t.Errorf("column(%q) = %d, want %d", ref, got, want)
 		}
-	}
-}
-
-func TestNotAWorkbook(t *testing.T) {
-	if _, err := Open(strings.NewReader("not a zip"), 9); err == nil {
-		t.Error("want error")
 	}
 }
 

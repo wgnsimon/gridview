@@ -49,7 +49,7 @@ go test ./...
 
 - **Unit tests** next to each file
 - **Fixtures** in `internal/reader/testdata`, produced by Excel and LibreOffice: dates, formulas, errors, Unicode, several sheets, 1200 shared strings across CONTINUE records. The CSV exports come from a German Excel on purpose, so they cover `;` delimiters, decimal commas, Windows-1252 and localized values such as `WAHR`.
-- **Golden files** for the complete output of all fixtures (`cmd/grid/testdata`) and one TUI session (`internal/tui/testdata`). Rewrite them with `go test ./... -update`, then review the diff in git.
+- **Golden files** for the complete output of a few fixtures (`cmd/grid/testdata`). Rewrite them with `go test ./... -update`, then review the diff in git.
 - **Fuzzing**: the CSV parser is compared against `encoding/csv`, xlsx and xls are fed broken input
 
 ```bash

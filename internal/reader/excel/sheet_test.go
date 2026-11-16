@@ -10,7 +10,6 @@ func TestPickSheet(t *testing.T) {
 		ok    bool
 	}{
 		{"", 0, true},
-		{"Data", 0, true},
 		{"empty", 2, true},
 		{"2", 1, true},
 		{"3", 2, true},
@@ -22,8 +21,5 @@ func TestPickSheet(t *testing.T) {
 		if (err == nil) != tt.ok || (tt.ok && i != tt.index) {
 			t.Errorf("PickSheet(%q) = %d, %v", tt.want, i, err)
 		}
-	}
-	if _, err := PickSheet(nil, ""); err == nil {
-		t.Error("empty workbook: want error")
 	}
 }

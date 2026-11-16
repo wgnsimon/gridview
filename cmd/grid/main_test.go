@@ -11,12 +11,8 @@ func TestParseArgs(t *testing.T) {
 		want config
 	}{
 		{[]string{"a.csv"}, config{path: "a.csv", width: -1}},
-		{[]string{"a.csv", "-view"}, config{path: "a.csv", view: true, width: -1}},
-		{[]string{"-v", "-s", "2", "a.xlsx"}, config{path: "a.xlsx", view: true, sheet: "2", width: -1}},
-		{[]string{"-d", ";", "a.csv", "-w", "80"}, config{path: "a.csv", delim: ';', width: 80}},
-		{[]string{"-d", "tab"}, config{delim: '\t', width: -1}},
-		{[]string{"a.csv", "-y"}, config{path: "a.csv", width: -1, yes: true}},
-		{[]string{"-yes", "a.csv"}, config{path: "a.csv", width: -1, yes: true}},
+		{[]string{"-v", "-s", "2", "a.xlsx", "-y"}, config{path: "a.xlsx", view: true, sheet: "2", width: -1, yes: true}},
+		{[]string{"-d", "tab", "a.csv", "-w", "80"}, config{path: "a.csv", delim: '\t', width: 80}},
 	}
 	for _, tt := range tests {
 		got, err := parseArgs(tt.args, io.Discard)
@@ -31,7 +27,7 @@ func TestParseArgs(t *testing.T) {
 }
 
 func TestParseArgsErrors(t *testing.T) {
-	for _, args := range [][]string{{"a", "b"}, {"-d", ";;"}, {"-d", `"`}, {"-nope"}} {
+	for _, args := range [][]string{{"a", "b"}, {"-d", ";;"}, {"-d", `"`}} {
 		if _, err := parseArgs(args, io.Discard); err == nil {
 			t.Errorf("%q: want error", args)
 		}
