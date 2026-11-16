@@ -34,6 +34,8 @@ type model struct {
 	query   string
 	message string
 	buf     []string
+	line    []byte
+	vis     []layout.Column
 }
 
 func (m *model) page() int {
@@ -172,7 +174,8 @@ func (m *model) clamp() {
 // full counts the columns that fit completely.
 func (m *model) visible(left int) ([]layout.Column, int) {
 	avail := m.width - m.gutter()
-	var out []layout.Column
+	out := m.vis[:0]
+	defer func() { m.vis = out[:0] }()
 	used := 0
 	for i := left; i < len(m.cols); i++ {
 		c := m.cols[i]
@@ -199,18 +202,14 @@ func (m *model) visible(left int) ([]layout.Column, int) {
 }
 
 func (m *model) gutter() int {
-	return len(itoa(max(m.rows, 1))) + sepWidth
+	return digits(max(m.rows, 1)) + sepWidth
 }
 
-func itoa(n int) string {
-	var b [20]byte
-	i := len(b)
-	for {
-		i--
-		b[i] = byte('0' + n%10)
+func digits(n int) int {
+	d := 1
+	for n >= 10 {
 		n /= 10
-		if n == 0 {
-			return string(b[i:])
-		}
+		d++
 	}
+	return d
 }

@@ -1,6 +1,10 @@
 package tui
 
 import (
+	"strconv"
+	"unicode/utf8"
+	"unsafe"
+
 	"gridview/internal/layout"
 )
 
@@ -20,10 +24,10 @@ func (m *model) render(dst []byte) []byte {
 	dst = append(dst, "\x1b[?2026h\x1b[H"...)
 	cols, _ := m.visible(m.left)
 	f := layout.Formatter{Cols: cols, Sep: sep, Cut: true}
-	digits := m.gutter() - sepWidth
+	width := m.gutter() - sepWidth
 
 	dst = append(dst, dim...)
-	dst = appendSpaces(dst, digits)
+	dst = appendSpaces(dst, width)
 	dst = append(dst, sep...)
 	dst = append(dst, reset+bold...)
 	dst = f.AppendMarked(dst, from(m.header, m.left), m.col-m.left, underline, noUnder)
@@ -32,10 +36,9 @@ func (m *model) render(dst []byte) []byte {
 	for i := range m.page() {
 		r := m.top + i
 		if r < m.rows {
-			n := itoa(r + 1)
 			dst = append(dst, dim...)
-			dst = appendSpaces(dst, digits-len(n))
-			dst = append(dst, n...)
+			dst = appendSpaces(dst, width-digits(r+1))
+			dst = strconv.AppendInt(dst, int64(r+1), 10)
 			dst = append(dst, sep...)
 			dst = append(dst, reset...)
 			m.buf = m.store.Row(r, m.buf)
@@ -51,31 +54,39 @@ func (m *model) render(dst []byte) []byte {
 	}
 
 	dst = append(dst, reverse...)
-	dst = appendFit(dst, m.status(), m.width)
+	m.line = m.status(m.line[:0])
+	dst = appendFit(dst, unsafe.String(unsafe.SliceData(m.line), len(m.line)), m.width)
 	return append(dst, reset+"\x1b[?2026l"...)
 }
 
-func (m *model) status() string {
+func (m *model) status(b []byte) []byte {
 	if m.prompt {
-		return "/" + string(m.input) + "▏"
+		b = append(b, '/')
+		for _, r := range m.input {
+			b = utf8.AppendRune(b, r)
+		}
+		return append(b, "▏"...)
 	}
-	s := " " + m.title + "   row " + itoa(min(m.row+1, m.rows)) + "/" + itoa(m.rows)
+	b = append(append(append(b, ' '), m.title...), "   row "...)
+	b = strconv.AppendInt(b, int64(min(m.row+1, m.rows)), 10)
+	b = strconv.AppendInt(append(b, '/'), int64(m.rows), 10)
 	if len(m.cols) > 0 {
-		s += "   col " + itoa(m.col+1) + "/" + itoa(len(m.cols))
+		b = strconv.AppendInt(append(b, "   col "...), int64(m.col+1), 10)
+		b = strconv.AppendInt(append(b, '/'), int64(len(m.cols)), 10)
 		if m.col < len(m.header) && m.header[m.col] != "" {
-			s += " " + m.header[m.col]
+			b = append(append(b, ' '), m.header[m.col]...)
 		}
 	}
 	switch {
 	case m.err != nil:
-		s += "   error: " + m.err.Error()
+		b = append(append(b, "   error: "...), m.err.Error()...)
 	case m.loading:
-		s += "   loading…"
+		b = append(b, "   loading…"...)
 	}
 	if m.message != "" {
-		return s + "   " + m.message
+		return append(append(b, "   "...), m.message...)
 	}
-	return s + "   ↑↓←→ PgUp PgDn g G  / search  n N  w wide  q quit"
+	return append(b, "   ↑↓←→ PgUp PgDn g G  / search  n N  w wide  q quit"...)
 }
 
 func from(row []string, i int) []string {
