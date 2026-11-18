@@ -11,6 +11,10 @@ on:
 
 permissions:
   contents: write
+  # Provenance attestations are signed with a short-lived OIDC token and
+  # written to the repository's attestation store.
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -62,6 +66,13 @@ jobs:
           done
           (cd dist && sha256sum * > checksums.txt)
           ls -l dist
+
+      # Records who built these files, from which commit and with which
+      # workflow, so `gh attestation verify` can check a download later.
+      - name: Attest provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: dist/*
 
       - name: Attach to release
         if: github.event_name == 'release'
