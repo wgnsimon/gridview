@@ -18,6 +18,14 @@ For large tables there is an interactive view for scrolling and searching.
 
 Ready-built binaries for Linux, macOS, Windows and FreeBSD are attached to every [release](https://github.com/wgnsimon/gridview/releases). Download the archive for your system, unpack it and put `grid` (or `grid.exe`) somewhere on your `PATH`.
 
+Every archive carries a build provenance attestation, so you can check that it really came out of this repository's release workflow before you run it. With the [GitHub CLI](https://cli.github.com):
+
+```bash
+gh attestation verify grid_v0.1.0_darwin_arm64.tar.gz --repo wgnsimon/gridview
+```
+
+`checksums.txt` in the release holds the SHA-256 of every archive.
+
 To build it yourself you need [Go](https://go.dev/dl/) 1.27 or newer.
 
 ```bash
