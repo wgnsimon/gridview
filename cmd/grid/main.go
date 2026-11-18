@@ -36,6 +36,9 @@ type config struct {
 	delim rune
 	width int
 	yes   bool
+	skip  int
+	// noHeader treats the first row as data.
+	noHeader bool
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
@@ -48,6 +51,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	}
 	defer rows.Close()
+	rows = table.Reshape(rows, cfg.skip, !cfg.noHeader)
 	if cfg.view {
 		term, restore, err := tui.OpenTerminal()
 		if err != nil {
@@ -115,6 +119,8 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.IntVar(&cfg.width, "w", -1, "short for -width")
 	fs.BoolVar(&cfg.yes, "yes", false, "print long tables without asking")
 	fs.BoolVar(&cfg.yes, "y", false, "short for -yes")
+	fs.BoolVar(&cfg.noHeader, "noheader", false, "the first row is data, name the columns A, B, C")
+	fs.IntVar(&cfg.skip, "skip", 0, "skip this many rows at the top, before the header")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: grid [flags] [file]\n\nfile is a .csv, .xlsx or .xls file, - or nothing reads stdin\n\nflags:")
 		fs.PrintDefaults()
@@ -136,6 +142,9 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	}
 	if len(pos) == 1 {
 		cfg.path = pos[0]
+	}
+	if cfg.skip < 0 {
+		return cfg, fmt.Errorf("invalid -skip %d", cfg.skip)
 	}
 	d, err := parseDelim(delim)
 	cfg.delim = d

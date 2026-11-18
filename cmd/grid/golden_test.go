@@ -24,6 +24,7 @@ func TestGolden(t *testing.T) {
 		{"excel-local", []string{fixtures + "excel-local.csv"}, ""},
 		{"types-xlsx", []string{fixtures + "types.xlsx"}, ""},
 		{"stdin-dash-semicolon", []string{"-"}, "a;b\n1;2\n"},
+		{"skip-noheader", []string{"-skip", "1", "-noheader"}, "exported 2024-01-31\n1,Anna\n2,Bo\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
