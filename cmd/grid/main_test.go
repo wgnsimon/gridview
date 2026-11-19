@@ -14,6 +14,7 @@ func TestParseArgs(t *testing.T) {
 		{[]string{"-v", "-s", "2", "a.xlsx", "-y"}, config{path: "a.xlsx", view: true, sheet: "2", width: -1, yes: true}},
 		{[]string{"-d", "tab", "a.csv", "-w", "80"}, config{path: "a.csv", delim: '\t', width: 80}},
 		{[]string{"-noheader", "-skip", "2", "a.csv"}, config{path: "a.csv", width: -1, skip: 2, noHeader: true}},
+		{[]string{"a.csv", "-c", "name,1-2"}, config{path: "a.csv", width: -1, cols: "name,1-2"}},
 	}
 	for _, tt := range tests {
 		got, err := parseArgs(tt.args, io.Discard)

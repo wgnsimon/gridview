@@ -37,6 +37,7 @@ type config struct {
 	width int
 	yes   bool
 	skip  int
+	cols  string
 	// noHeader treats the first row as data.
 	noHeader bool
 }
@@ -52,6 +53,11 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	}
 	defer rows.Close()
 	rows = table.Reshape(rows, cfg.skip, !cfg.noHeader)
+	if cfg.cols != "" {
+		if rows, err = table.Select(rows, cfg.cols); err != nil {
+			return err
+		}
+	}
 	if cfg.view {
 		term, restore, err := tui.OpenTerminal()
 		if err != nil {
@@ -120,6 +126,8 @@ func parseArgs(args []string, stderr io.Writer) (config, error) {
 	fs.BoolVar(&cfg.yes, "yes", false, "print long tables without asking")
 	fs.BoolVar(&cfg.yes, "y", false, "short for -yes")
 	fs.BoolVar(&cfg.noHeader, "noheader", false, "the first row is data, name the columns A, B, C")
+	fs.StringVar(&cfg.cols, "cols", "", "columns to show, by name, number or range: name,city or 1,3-5")
+	fs.StringVar(&cfg.cols, "c", "", "short for -cols")
 	fs.IntVar(&cfg.skip, "skip", 0, "skip this many rows at the top, before the header")
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: grid [flags] [file]\n\nfile is a .csv, .xlsx or .xls file, - or nothing reads stdin\n\nflags:")
