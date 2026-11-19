@@ -32,10 +32,19 @@ type model struct {
 	wide          bool
 	// frozen columns stay on the left while the others scroll.
 	frozen int
-	// order maps rows on screen to rows in the store, nil for file order.
-	order    []int32
+	// loaded counts the rows in the store, rows those on screen: fewer
+	// while a filter is set.
+	loaded int
+	// sorted lists all rows in sort order, nil for file order.
+	sorted   []int32
 	sortCol  int
 	sortDesc bool
+	filter   string
+	// filtering is set while the prompt edits the filter instead of a search.
+	filtering bool
+	// order maps rows on screen to rows in the store, nil for all rows in
+	// file order.
+	order []int32
 
 	record bool
 	recTop int
@@ -142,6 +151,8 @@ func (m *model) handle(k Key) bool {
 		m.prompt = true
 		m.back = k.Rune == '?'
 		m.input = m.input[:0]
+	case k.Rune == '&':
+		m.startFilter()
 	case k.Rune == 'n':
 		m.repeat(n, 1)
 	case k.Rune == 'N':
@@ -175,11 +186,16 @@ func (m *model) edit(k Key) {
 	switch k.Code {
 	case KeyEnter:
 		m.prompt = false
-		m.query = string(m.input)
-		m.repeat(1, 1)
+		if m.filtering {
+			m.filtering = false
+			m.setFilter(string(m.input))
+		} else {
+			m.query = string(m.input)
+			m.repeat(1, 1)
+		}
 		m.clamp()
 	case KeyEsc, KeyCtrlC:
-		m.prompt = false
+		m.prompt, m.filtering = false, false
 	case KeyBackspace:
 		if len(m.input) > 0 {
 			m.input = m.input[:len(m.input)-1]
@@ -197,26 +213,35 @@ func (m *model) find(dir int) bool {
 	ascii := isASCII(q)
 	for step := 1; step <= m.rows; step++ {
 		r := ((m.row+dir*step)%m.rows + m.rows) % m.rows
-		// The stored bytes of a row rule out most rows without decoding them.
-		if ascii && !containsASCII(m.store.Raw(m.at(r)), q) {
-			continue
-		}
-		m.buf = m.store.Row(m.at(r), m.buf)
-		for c, s := range m.buf {
-			hit := false
-			if ascii {
-				hit = containsASCII(s, q)
-			} else {
-				m.fold, hit = containsLower(m.fold, s, q)
-			}
-			if hit {
-				m.row, m.col = r, c
-				return true
-			}
+		if c := m.match(m.at(r), q, ascii); c >= 0 {
+			m.row, m.col = r, c
+			return true
 		}
 	}
 	m.message = "not found: " + m.query
 	return false
+}
+
+// match returns the first column of store row r that contains the lower
+// case q, -1 if there is none.
+func (m *model) match(r int, q string, ascii bool) int {
+	// The stored bytes of a row rule out most rows without decoding them.
+	if ascii && !containsASCII(m.store.Raw(r), q) {
+		return -1
+	}
+	m.buf = m.store.Row(r, m.buf)
+	for c, s := range m.buf {
+		hit := false
+		if ascii {
+			hit = containsASCII(s, q)
+		} else {
+			m.fold, hit = containsLower(m.fold, s, q)
+		}
+		if hit {
+			return c
+		}
+	}
+	return -1
 }
 
 // containsFold reports whether s contains the lower case q, ignoring case.
@@ -373,7 +398,7 @@ func (m *model) colsOnScreen() ([]int, int) {
 }
 
 func (m *model) gutter() int {
-	return digits(max(m.rows, 1)) + sepWidth
+	return digits(max(m.loaded, 1)) + sepWidth
 }
 
 func digits(n int) int {

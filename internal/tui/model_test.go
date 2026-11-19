@@ -26,7 +26,7 @@ func newTestModel(rows, cols, width, height int) *model {
 		m.store.Append(row)
 		ms.Add(row)
 	}
-	m.rows = rows
+	m.rows, m.loaded = rows, rows
 	m.cols = ms.Columns()
 	return m
 }

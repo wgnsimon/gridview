@@ -49,7 +49,7 @@ func newSortModel() *model {
 	for _, r := range [][]string{{"bo", "10"}, {"Anna", "9"}, {"", "x"}, {"cy", ""}} {
 		m.store.Append(r)
 	}
-	m.rows = 4
+	m.rows, m.loaded = 4, 4
 	m.cols = []layout.Column{{Width: 4}, {Width: 2}}
 	return m
 }
@@ -82,7 +82,7 @@ func TestSort(t *testing.T) {
 		t.Errorf("gutter should show the file row, got %q", got[2])
 	}
 	press(m, runes("S")...)
-	if m.order != nil {
+	if m.order != nil || m.sorted != nil {
 		t.Error("pressing S again should restore the file order")
 	}
 	press(m, runes("ls")...)
@@ -95,7 +95,7 @@ func TestSortWhileLoading(t *testing.T) {
 	m := newSortModel()
 	m.loading = true
 	press(m, runes("s")...)
-	if m.order != nil || !strings.Contains(m.message, "loading") {
+	if m.sorted != nil || !strings.Contains(m.message, "loading") {
 		t.Errorf("order %v message %q", m.order, m.message)
 	}
 }
@@ -105,11 +105,11 @@ func BenchmarkSort(b *testing.B) {
 	for i := range 1_000_000 {
 		m.store.Append([]string{strconv.Itoa(i * 7919 % 1_000_003), "item" + strconv.Itoa(i*31%9973)})
 	}
-	m.rows = 1_000_000
+	m.rows, m.loaded = 1_000_000, 1_000_000
 	for b.Loop() {
-		m.order = nil
+		m.sorted = nil
 		m.sortBy(0, false)
-		m.order = nil
+		m.sorted = nil
 		m.sortBy(1, true)
 	}
 }

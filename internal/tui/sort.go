@@ -26,16 +26,16 @@ func (m *model) sortBy(col int, desc bool) {
 		m.message = "wait until loading has finished"
 		return
 	}
-	if m.rows == 0 || col >= len(m.cols) {
+	if m.loaded == 0 || col >= len(m.cols) {
 		return
 	}
-	cur := m.at(m.row)
-	if m.order != nil && m.sortCol == col && m.sortDesc == desc {
-		m.order = nil
-		m.row = cur
+	cur := m.current()
+	if m.sorted != nil && m.sortCol == col && m.sortDesc == desc {
+		m.sorted = nil
+		m.applyOrder(cur)
 		return
 	}
-	keys := make([]sortKey, m.rows)
+	keys := make([]sortKey, m.loaded)
 	for r := range keys {
 		m.buf = m.store.Row(r, m.buf)
 		cell := ""
@@ -52,16 +52,14 @@ func (m *model) sortBy(col int, desc bool) {
 		}
 		return c
 	})
-	if m.order == nil {
-		m.order = make([]int32, m.rows)
+	if m.sorted == nil {
+		m.sorted = make([]int32, m.loaded)
 	}
 	for i, k := range keys {
-		m.order[i] = k.row
-		if int(k.row) == cur {
-			m.row = i
-		}
+		m.sorted[i] = k.row
 	}
 	m.sortCol, m.sortDesc = col, desc
+	m.applyOrder(cur)
 }
 
 const (

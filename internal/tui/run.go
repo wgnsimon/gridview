@@ -152,7 +152,10 @@ func (l *loader) publish(n int, ms *layout.Measure, done bool, err error) {
 
 func (l *loader) sync(m *model) {
 	l.mu.Lock()
-	m.rows, m.cols, m.loading, m.err = l.rows, l.cols, !l.done, l.err
+	m.loaded, m.cols, m.loading, m.err = l.rows, l.cols, !l.done, l.err
+	if m.order == nil {
+		m.rows = m.loaded
+	}
 	l.mu.Unlock()
 	m.clamp()
 }

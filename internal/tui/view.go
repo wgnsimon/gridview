@@ -78,7 +78,9 @@ func (m *model) appendStatus(dst []byte) []byte {
 
 func (m *model) status(b []byte) []byte {
 	if m.prompt {
-		if m.back {
+		if m.filtering {
+			b = append(b, '&')
+		} else if m.back {
 			b = append(b, '?')
 		} else {
 			b = append(b, '/')
@@ -101,7 +103,10 @@ func (m *model) status(b []byte) []byte {
 	if m.frozen > 0 && !m.record {
 		b = strconv.AppendInt(append(b, "   frozen "...), int64(m.frozen), 10)
 	}
-	if m.order != nil {
+	if m.filter != "" {
+		b = append(append(append(b, "   filter \""...), m.filter...), '"')
+	}
+	if m.sorted != nil {
 		b = append(append(b, "   sorted by "...), m.label(m.sortCol)...)
 		if m.sortDesc {
 			b = append(b, " ↓"...)
@@ -131,7 +136,7 @@ func (m *model) status(b []byte) []byte {
 		}
 		return b
 	}
-	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  s S sort  Enter record  f freeze  w wide  q quit"...)
+	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  s S sort  & filter  Enter record  f freeze  w wide  q quit"...)
 }
 
 // pick returns the cells of row in the columns on screen.
