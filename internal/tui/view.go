@@ -48,12 +48,14 @@ func (m *model) render(dst []byte) []byte {
 	for i := range m.page() {
 		r := m.top + i
 		if r < m.rows {
+			// The gutter shows the row number in the file, also when sorted.
+			n := m.at(r) + 1
 			dst = append(dst, dim...)
-			dst = appendSpaces(dst, width-digits(r+1))
-			dst = strconv.AppendInt(dst, int64(r+1), 10)
+			dst = appendSpaces(dst, width-digits(n))
+			dst = strconv.AppendInt(dst, int64(n), 10)
 			dst = append(dst, sep...)
 			dst = append(dst, reset...)
-			m.buf = m.store.Row(r, m.buf)
+			m.buf = m.store.Row(n-1, m.buf)
 			if r == m.row {
 				dst = append(dst, reverse...)
 				dst = f.AppendMarked(dst, m.pick(m.buf), mark, noReverse, reverse)
@@ -99,6 +101,14 @@ func (m *model) status(b []byte) []byte {
 	if m.frozen > 0 && !m.record {
 		b = strconv.AppendInt(append(b, "   frozen "...), int64(m.frozen), 10)
 	}
+	if m.order != nil {
+		b = append(append(b, "   sorted by "...), m.label(m.sortCol)...)
+		if m.sortDesc {
+			b = append(b, " ↓"...)
+		} else {
+			b = append(b, " ↑"...)
+		}
+	}
 	switch {
 	case m.err != nil:
 		b = append(append(b, "   error: "...), m.err.Error()...)
@@ -121,7 +131,7 @@ func (m *model) status(b []byte) []byte {
 		}
 		return b
 	}
-	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  Enter record  f freeze  w wide  q quit"...)
+	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  s S sort  Enter record  f freeze  w wide  q quit"...)
 }
 
 // pick returns the cells of row in the columns on screen.
