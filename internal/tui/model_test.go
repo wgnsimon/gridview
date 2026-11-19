@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -142,9 +143,9 @@ func TestHorizontalScrollKeepsCursorVisible(t *testing.T) {
 	m := newTestModel(5, 20, 40, 10)
 	for range 19 {
 		press(m, Key{Code: KeyRight})
-		cols, full := m.visible(m.left)
-		if m.col < m.left || m.col >= m.left+full {
-			t.Fatalf("col %d not fully visible from left %d (%d cols)", m.col, m.left, len(cols))
+		idx, full := m.colsOnScreen()
+		if pos := slices.Index(idx, m.col); pos < 0 || pos >= full {
+			t.Fatalf("col %d not fully visible from left %d (%v)", m.col, m.left, idx)
 		}
 	}
 }
@@ -235,5 +236,45 @@ func TestRender(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestFreeze(t *testing.T) {
+	m := newTestModel(3, 20, 40, 6)
+	press(m, runes("lf$")...)
+	if m.frozen != 2 {
+		t.Fatalf("frozen %d, want 2", m.frozen)
+	}
+	got := screen(m)
+	if want := "  │ col0 │ col1 │ col17 │ col18 │ col19"; got[0] != want {
+		t.Errorf("header %q, want %q", got[0], want)
+	}
+	if want := "1 │ r0c0 │ r0c1 │ r0c17 │ r0c18 │ r0c19"; got[2] != want {
+		t.Errorf("row %q, want %q", got[2], want)
+	}
+	press(m, runes("0")...)
+	if got := screen(m); !strings.HasPrefix(got[0], "  │ col0 │ col1 │ col2 │") {
+		t.Errorf("after 0 header %q", got[0])
+	}
+	press(m, runes("$hhhhhhhhhhhhhhhh")...)
+	if m.col != 3 || m.left > 3 || m.left < 2 {
+		t.Errorf("col %d left %d", m.col, m.left)
+	}
+	press(m, runes("f")...)
+	if m.frozen != 0 {
+		t.Errorf("second f should unfreeze, frozen %d", m.frozen)
+	}
+}
+
+func TestFreezeKeepsCursorVisible(t *testing.T) {
+	m := newTestModel(5, 20, 40, 10)
+	press(m, runes("llf")...)
+	for range 19 {
+		press(m, Key{Code: KeyRight})
+		idx, full := m.colsOnScreen()
+		pos := slices.Index(idx, m.col)
+		if pos < 0 || pos >= full {
+			t.Fatalf("col %d not fully visible: %v (%d full)", m.col, idx, full)
+		}
 	}
 }

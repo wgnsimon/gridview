@@ -30,6 +30,8 @@ type model struct {
 	top, row      int
 	left, col     int
 	wide          bool
+	// frozen columns stay on the left while the others scroll.
+	frozen int
 
 	record bool
 	recTop int
@@ -45,6 +47,8 @@ type model struct {
 	fold    []byte
 	line    []byte
 	vis     []layout.Column
+	idx     []int
+	cells   []string
 }
 
 // page is the number of data rows on screen, below header and rule
@@ -120,6 +124,12 @@ func (m *model) handle(k Key) bool {
 		m.openRecord()
 	case k.Rune == 'w':
 		m.wide = !m.wide
+	case k.Rune == 'f':
+		if m.frozen > 0 {
+			m.frozen = 0
+		} else {
+			m.frozen = m.col + 1
+		}
 	case k.Rune == '/' || k.Rune == '?':
 		m.prompt = true
 		m.back = k.Rune == '?'
@@ -300,44 +310,58 @@ func (m *model) clamp() {
 	}
 	m.top = max(0, m.top)
 	m.col = max(0, min(m.col, len(m.cols)-1))
-	m.left = max(0, min(m.left, m.col))
+	m.frozen = min(m.frozen, len(m.cols))
+	m.left = max(m.frozen, min(m.left, m.col))
 	for m.left < m.col {
-		if _, full := m.visible(m.left); m.col < m.left+full {
+		if full := m.layoutCols(m.left); m.frozen+m.col-m.left < full {
 			break
 		}
 		m.left++
 	}
 }
 
-// visible returns the columns shown from left; the last may be cut.
-// full counts the columns that fit completely.
-func (m *model) visible(left int) ([]layout.Column, int) {
+// layoutCols puts the columns on screen into m.vis and their indexes into
+// m.idx: the frozen columns, then those from left on. The last may be cut;
+// it returns how many fit completely.
+func (m *model) layoutCols(left int) int {
 	avail := m.width - m.gutter()
-	out := m.vis[:0]
-	defer func() { m.vis = out[:0] }()
+	m.vis, m.idx = m.vis[:0], m.idx[:0]
 	used := 0
-	for i := left; i < len(m.cols); i++ {
+	frozen := min(m.frozen, len(m.cols))
+	for i := 0; i < len(m.cols); i++ {
+		if i == frozen {
+			i = max(left, frozen)
+			if i >= len(m.cols) {
+				break
+			}
+		}
 		c := m.cols[i]
 		if !m.wide {
 			c.Width = min(c.Width, maxCell)
 		}
 		c.Width = max(c.Width, 1)
 		gap := 0
-		if len(out) > 0 {
+		if len(m.vis) > 0 {
 			gap = sepWidth
 		}
-		if used+gap+c.Width <= avail {
-			out = append(out, c)
-			used += gap + c.Width
-			continue
+		if used+gap+c.Width > avail {
+			full := len(m.vis)
+			if rest := avail - used - gap; rest > 0 {
+				c.Width = rest
+				m.vis, m.idx = append(m.vis, c), append(m.idx, i)
+			}
+			return full
 		}
-		if rest := avail - used - gap; rest > 0 {
-			c.Width = rest
-			return append(out, c), len(out)
-		}
-		break
+		m.vis, m.idx = append(m.vis, c), append(m.idx, i)
+		used += gap + c.Width
 	}
-	return out, len(out)
+	return len(m.vis)
+}
+
+// colsOnScreen returns the indexes of the columns on screen and how many fit completely.
+func (m *model) colsOnScreen() ([]int, int) {
+	full := m.layoutCols(m.left)
+	return m.idx, full
 }
 
 func (m *model) gutter() int {
