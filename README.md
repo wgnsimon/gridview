@@ -37,7 +37,7 @@ $ grid customers.csv
 
 - 📄 **CSV, TSV, xlsx and xls** – detected from the contents, not the file extension
 - 🔤 **No setup** – character set, delimiter and numeric columns are recognized automatically
-- 🧭 **Interactive view** – scroll, search, sort and freeze columns with vi-style keys
+- 🧭 **Interactive view** – scroll, search, sort, filter and freeze columns with vi-style keys
 - 📐 **Fits your terminal** – long cells are cut neatly, plain ASCII output when piped
 - 📊 **Excel as you see it** – dates, percentages and formula results look like they do in Excel
 - 📦 **One small binary** – no runtime, no dependencies
@@ -105,6 +105,7 @@ The view fills the terminal and keeps the header pinned at the top. Row numbers 
 | `/` `?` | search forward, backward |
 | `n` `N` | next, previous match |
 | `s` `S` | sort by the current column, ascending, descending |
+| `&` | show only rows containing a text, empty to show all |
 | `Enter` | show the current row as a record |
 | `f` | freeze the columns up to the current one, again to unfreeze |
 | `w` | toggle full-width columns |
@@ -126,6 +127,8 @@ curl -s https://example.com/export.csv | grid -v
 **Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
 
 **Sorting.** `s` sorts the rows by the current column in ascending order, `S` in descending order. Pressing the same key on the same column again restores the order of the file. Numbers are sorted by value, also with a decimal comma, thousands separators or `%`. Text is sorted ignoring case, with numbers inside it compared by value, so `file2` comes before `file10`. Numbers come before text, empty cells always last. The row numbers on the left keep showing the row in the file, the status line shows the sort column. Sorting works once the file has finished loading.
+
+**Filtering.** `&` opens an input line like the search. After `Enter`, only rows with a cell containing the text are shown, ignoring case; the status line shows the filter. `&` again starts with the current filter so you can change it, an empty filter shows all rows again. Filter and sort combine, and the search then only looks at the filtered rows. Like sorting, filtering works once the file has finished loading.
 
 **Freezing columns.** `f` keeps the columns up to and including the current one on the left while the others scroll, handy for an ID or name column in a wide table. The status line shows how many are frozen; another `f` unfreezes them.
 
