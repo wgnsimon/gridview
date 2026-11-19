@@ -122,6 +122,7 @@ The view fills the terminal and keeps the header and its rule pinned at the top.
 | `0` `$` | first, last column |
 | `/` `?` | search forward, backward |
 | `n` `N` | next, previous match |
+| `s` `S` | sort by the current column, ascending, descending |
 | `Enter` | show the current row as a record |
 | `f` | freeze the columns up to the current one, again to unfreeze |
 | `w` | toggle full-width columns |
@@ -132,6 +133,8 @@ The view fills the terminal and keeps the header and its rule pinned at the top.
 **Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
 
 **Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
+
+**Sorting.** `s` sorts the rows by the current column in ascending order, `S` in descending order. Pressing the same key on the same column again restores the order of the file. Numbers are sorted by value, also with a decimal comma, thousands separators or `%`. Text is sorted ignoring case, with numbers inside it compared by value, so `file2` comes before `file10`. Numbers come before text, empty cells always last. The row numbers on the left keep showing the row in the file, the status line shows the sort column. Sorting works once the file has finished loading.
 
 **Freezing columns.** `f` keeps the columns up to and including the current one on the left while the others scroll, handy for an ID or name column in a wide table. The status line shows how many are frozen; another `f` unfreezes them.
 

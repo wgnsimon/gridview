@@ -32,6 +32,10 @@ type model struct {
 	wide          bool
 	// frozen columns stay on the left while the others scroll.
 	frozen int
+	// order maps rows on screen to rows in the store, nil for file order.
+	order    []int32
+	sortCol  int
+	sortDesc bool
 
 	record bool
 	recTop int
@@ -124,6 +128,10 @@ func (m *model) handle(k Key) bool {
 		m.openRecord()
 	case k.Rune == 'w':
 		m.wide = !m.wide
+	case k.Rune == 's':
+		m.sortBy(m.col, false)
+	case k.Rune == 'S':
+		m.sortBy(m.col, true)
 	case k.Rune == 'f':
 		if m.frozen > 0 {
 			m.frozen = 0
@@ -190,10 +198,10 @@ func (m *model) find(dir int) bool {
 	for step := 1; step <= m.rows; step++ {
 		r := ((m.row+dir*step)%m.rows + m.rows) % m.rows
 		// The stored bytes of a row rule out most rows without decoding them.
-		if ascii && !containsASCII(m.store.Raw(r), q) {
+		if ascii && !containsASCII(m.store.Raw(m.at(r)), q) {
 			continue
 		}
-		m.buf = m.store.Row(r, m.buf)
+		m.buf = m.store.Row(m.at(r), m.buf)
 		for c, s := range m.buf {
 			hit := false
 			if ascii {

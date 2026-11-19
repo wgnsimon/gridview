@@ -95,7 +95,7 @@ func (m *model) recordLines() []recordLine {
 	if m.rows == 0 {
 		return nil
 	}
-	m.buf = m.store.Row(m.row, m.buf)
+	m.buf = m.store.Row(m.at(m.row), m.buf)
 	width := m.width - m.labelWidth() - sepWidth
 	var out []recordLine
 	for c := range m.cols {
