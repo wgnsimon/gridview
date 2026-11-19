@@ -1,6 +1,27 @@
 <p align="center"><img src="docs/logo.svg" alt="grid" width="246"></p>
 
-`grid` shows CSV and Excel files as a table in the terminal. Just pass the file and `grid` works out the rest by itself: format, character set, delimiter and numeric columns.
+<p align="center">
+  <b>CSV and Excel files as a clean table, right in your terminal.</b>
+</p>
+
+<p align="center">
+  <a href="https://github.com/wgnsimon/gridview/releases/latest"><img src="https://img.shields.io/github/v/release/wgnsimon/gridview?label=release" alt="Latest release"></a>
+  <a href="https://github.com/wgnsimon/gridview/actions/workflows/test.yml"><img src="https://github.com/wgnsimon/gridview/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20FreeBSD-blue" alt="Platforms">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="#installation">Installation</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#interactive-view">Interactive view</a> ·
+  <a href="#file-formats">File formats</a> ·
+  <a href="#options">Options</a>
+</p>
+
+---
+
+Just pass the file and `grid` works out the rest by itself: format, character set, delimiter and numeric columns.
 
 ```
 $ grid customers.csv
@@ -12,45 +33,89 @@ $ grid customers.csv
 └────┴──────┴────────┘
 ```
 
-For large tables there is an interactive view for scrolling and searching.
+## Highlights
+
+- 📄 **CSV, TSV, xlsx and xls** – detected from the contents, not the file extension
+- 🔤 **No setup** – character set, delimiter and numeric columns are recognized automatically
+- 🧭 **Interactive view** – scroll, search, sort and freeze columns with vi-style keys
+- 📐 **Fits your terminal** – long cells are cut neatly, plain ASCII output when piped
+- 📊 **Excel as you see it** – dates, percentages and formula results look like they do in Excel
+- 📦 **One small binary** – no runtime, no dependencies
 
 ## Installation
 
-Ready-built binaries for Linux, macOS, Windows and FreeBSD are attached to every [release](https://github.com/wgnsimon/gridview/releases). Download the archive for your system, unpack it and put `grid` (or `grid.exe`) somewhere on your `PATH`.
+Download the archive for your system from the [latest release](https://github.com/wgnsimon/gridview/releases/latest), unpack it and put `grid` (or `grid.exe`) somewhere on your `PATH`.
 
-Every archive carries a build provenance attestation, so you can check that it really came out of this repository's release workflow before you run it. With the [GitHub CLI](https://cli.github.com):
+| System | Archive |
+|---|---|
+| macOS (Apple Silicon) | `grid_<version>_darwin_arm64.tar.gz` |
+| macOS (Intel) | `grid_<version>_darwin_amd64.tar.gz` |
+| Linux | `grid_<version>_linux_amd64.tar.gz`, `…_linux_arm64.tar.gz` |
+| Windows | `grid_<version>_windows_amd64.zip`, `…_windows_arm64.zip` |
+| FreeBSD | `grid_<version>_freebsd_amd64.tar.gz` |
 
-```bash
-gh attestation verify grid_v0.1.0_darwin_arm64.tar.gz --repo wgnsimon/gridview
-```
+Prefer building it yourself? See [Building from source](#building-from-source).
 
-`checksums.txt` in the release holds the SHA-256 of every archive.
-
-To build it yourself you need [Go](https://go.dev/dl/) 1.27 or newer.
-
-```bash
-git clone https://github.com/wgnsimon/gridview.git
-```
-
-```bash
-cd gridview
-```
-
-```bash
-go install -ldflags="-s -w" -trimpath ./cmd/grid
-```
-
-`grid` then lives in `$(go env GOPATH)/bin`. If that folder is on your `PATH`, `grid` works in every terminal.
-
-## Getting started
+## Quick start
 
 ```bash
 grid data.csv                # print the table
 grid -v data.xlsx            # browse interactively
 grid -s Sales book.xls       # open a specific sheet
+grid -c name,city data.csv   # show only some columns
 cat data.csv | grid          # read from stdin
 grid -h                      # all options
 ```
+
+## Interactive view
+
+```bash
+grid -v data.xlsx
+```
+
+The view fills the terminal and keeps the header pinned at the top. Row numbers are on the left, the current row is highlighted and the current cell within it stands out. The status line at the bottom shows file, row, column and column name. Large files keep loading in the background; the first page appears immediately.
+
+| Key | Action |
+|---|---|
+| `↑` `↓` or `k` `j` | one row up, down |
+| `←` `→` or `h` `l` | one column left, right |
+| `PgUp` `PgDn` or `b` `Space` or `Ctrl-B` `Ctrl-F` | one page up, down |
+| `Ctrl-U` `Ctrl-D` | half a page up, down |
+| `Home` `End` or `gg` `G` | first, last row |
+| `H` `M` `L` | top, middle, bottom row on screen |
+| `0` `$` | first, last column |
+| `/` `?` | search forward, backward |
+| `n` `N` | next, previous match |
+| `s` `S` | sort by the current column, ascending, descending |
+| `Enter` | show the current row as a record |
+| `f` | freeze the columns up to the current one, again to unfreeze |
+| `w` | toggle full-width columns |
+| `q` `Esc` `Ctrl-C` | quit |
+
+The view also works with data from stdin:
+
+```bash
+curl -s https://example.com/export.csv | grid -v
+```
+
+<details>
+<summary><b>More about the interactive view</b></summary>
+
+<br>
+
+**Counts.** Like in vi, a number before a key repeats it: `5j` moves five rows down, `3l` three columns right. `42G` or `42gg` jumps to row 42, `3n` to the third match. `Esc` drops a count you typed.
+
+**Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
+
+**Sorting.** `s` sorts the rows by the current column in ascending order, `S` in descending order. Pressing the same key on the same column again restores the order of the file. Numbers are sorted by value, also with a decimal comma, thousands separators or `%`. Text is sorted ignoring case, with numbers inside it compared by value, so `file2` comes before `file10`. Numbers come before text, empty cells always last. The row numbers on the left keep showing the row in the file, the status line shows the sort column. Sorting works once the file has finished loading.
+
+**Freezing columns.** `f` keeps the columns up to and including the current one on the left while the others scroll, handy for an ID or name column in a wide table. The status line shows how many are frozen; another `f` unfreezes them.
+
+**Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
+
+**Record.** `Enter` shows the current row as a list of column names and values, one per line. Long values wrap over several lines and line breaks inside a cell show as real line breaks, so nothing is cut. `↑` `↓` scroll, `←` `→` go to the previous and next row, `Esc`, `Enter` or `q` go back to the table.
+
+</details>
 
 ## Printing a table
 
@@ -65,7 +130,9 @@ id | name | city
  2 | Ömer | Köln
 ```
 
-**Width.** The table is fitted to the width of the terminal. Cells that are too long are cut with `…`, line breaks inside a cell show as `↵`. If not all columns fit, `grid` says at the end how many are missing:
+### Width
+
+The table is fitted to the width of the terminal. Cells that are too long are cut with `…`, line breaks inside a cell show as `↵`. If not all columns fit, `grid` says at the end how many are missing:
 
 ```
 ┌─────────┬─────────┬─────────┬─────────┬─────────┬────────┐
@@ -83,7 +150,9 @@ id | name | city
 grid -w 0 book.xlsx > book.txt
 ```
 
-**Columns.** `-cols` (or `-c`) shows only the columns you list, in that order. Name them by header (case doesn't matter), by number starting at 1, or by range:
+### Columns
+
+`-cols` (or `-c`) shows only the columns you list, in that order. Name them by header (case doesn't matter), by number starting at 1, or by range:
 
 ```bash
 grid -c name,city customers.csv
@@ -95,59 +164,15 @@ grid -c 1,4-6,9- wide.xlsx
 
 `9-` means column 9 to the last. With `-noheader`, the names `A`, `B`, `C` work too. `-cols` also applies to the interactive view.
 
-**Long tables.** If a table has more than 250 rows, `grid` asks first so the terminal doesn't get flooded:
+### Long tables
+
+If a table has more than 250 rows, `grid` asks first so the terminal doesn't get flooded:
 
 ```
 Print 1200 rows? Use -view to browse instead. [y/N]
 ```
 
 `y` prints the table, anything else cancels. `-y` skips the question. When writing to a file or pipe, `grid` never asks.
-
-## Interactive view
-
-```bash
-grid -v data.xlsx
-```
-
-The view fills the terminal and keeps the header and its rule pinned at the top. Row numbers are on the left, the current row is highlighted and the current cell within it stands out. The status line at the bottom shows file, row, column and column name. Large files keep loading in the background; the first page appears immediately.
-
-| Key | Action |
-|---|---|
-| `↑` `↓` or `k` `j` | one row up, down |
-| `←` `→` or `h` `l` | one column left, right |
-| `PgUp` `PgDn` or `b` `Space` or `Ctrl-B` `Ctrl-F` | one page up, down |
-| `Ctrl-U` `Ctrl-D` | half a page up, down |
-| `Home` `End` or `gg` `G` | first, last row |
-| `H` `M` `L` | top, middle, bottom row on screen |
-| `0` `$` | first, last column |
-| `/` `?` | search forward, backward |
-| `n` `N` | next, previous match |
-| `s` `S` | sort by the current column, ascending, descending |
-| `&` | show only rows containing a text, empty to show all |
-| `Enter` | show the current row as a record |
-| `f` | freeze the columns up to the current one, again to unfreeze |
-| `w` | toggle full-width columns |
-| `q` `Esc` `Ctrl-C` | quit |
-
-**Counts.** Like in vi, a number before a key repeats it: `5j` moves five rows down, `3l` three columns right. `42G` or `42gg` jumps to row 42, `3n` to the third match. `Esc` drops a count you typed.
-
-**Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
-
-**Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
-
-**Sorting.** `s` sorts the rows by the current column in ascending order, `S` in descending order. Pressing the same key on the same column again restores the order of the file. Numbers are sorted by value, also with a decimal comma, thousands separators or `%`. Text is sorted ignoring case, with numbers inside it compared by value, so `file2` comes before `file10`. Numbers come before text, empty cells always last. The row numbers on the left keep showing the row in the file, the status line shows the sort column. Sorting works once the file has finished loading.
-
-**Filtering.** `&` opens an input line like the search. After `Enter`, only rows with a cell containing the text are shown, ignoring case; the status line shows the filter. `&` again starts with the current filter so you can change it, an empty filter shows all rows again. Filter and sort combine, and the search then only looks at the filtered rows. Like sorting, filtering works once the file has finished loading.
-
-**Freezing columns.** `f` keeps the columns up to and including the current one on the left while the others scroll, handy for an ID or name column in a wide table. The status line shows how many are frozen; another `f` unfreezes them.
-
-**Record.** `Enter` shows the current row as a list of column names and values, one per line. Long values wrap over several lines and line breaks inside a cell show as real line breaks, so nothing is cut. `↑` `↓` scroll, `←` `→` go to the previous and next row, `Esc`, `Enter` or `q` go back to the table.
-
-The view also works with data from stdin:
-
-```bash
-curl -s https://example.com/export.csv | grid -v
-```
 
 ## File formats
 
@@ -218,7 +243,8 @@ Cells appear the way Excel displays them:
 
 `grid` doesn't evaluate formulas itself. It shows the value Excel or LibreOffice stored when the file was last saved.
 
-**Not supported:** encrypted workbooks, xls from Excel 5.0/95 and older, and other formats such as `.ods` or `.xlsb`.
+> [!NOTE]
+> **Not supported:** encrypted workbooks, xls from Excel 5.0/95 and older, and other formats such as `.ods` or `.xlsb`.
 
 ## Options
 
@@ -237,6 +263,34 @@ Cells appear the way Excel displays them:
 Options may come before or after the file name. Without a file name, or with `-`, `grid` reads from stdin.
 
 On error, `grid` writes a message prefixed with `grid:` to stderr and exits with code 1.
+
+## Building from source
+
+You need [Go](https://go.dev/dl/) 1.27 or newer.
+
+```bash
+git clone https://github.com/wgnsimon/gridview.git
+```
+
+```bash
+cd gridview
+```
+
+```bash
+go install -ldflags="-s -w" -trimpath ./cmd/grid
+```
+
+`grid` then lives in `$(go env GOPATH)/bin`. If that folder is on your `PATH`, `grid` works in every terminal.
+
+## Verifying a download
+
+Every release archive carries a build provenance attestation, so you can check that it really came out of this repository's release workflow before you run it. With the [GitHub CLI](https://cli.github.com):
+
+```bash
+gh attestation verify grid_v0.1.0_darwin_arm64.tar.gz --repo wgnsimon/gridview
+```
+
+`checksums.txt` in the release holds the SHA-256 of every archive.
 
 ## Contributing
 
