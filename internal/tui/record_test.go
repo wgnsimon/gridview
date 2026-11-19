@@ -35,7 +35,7 @@ func newRecordModel() *model {
 		header: []string{"id", "name", "note"}}
 	m.store.Append([]string{"1", "Anna", "a long note that needs to wrap over lines"})
 	m.store.Append([]string{"2", "Bo", "", "extra"})
-	m.rows = 2
+	m.rows, m.loaded = 2, 2
 	m.cols = make([]layout.Column, 4)
 	return m
 }
