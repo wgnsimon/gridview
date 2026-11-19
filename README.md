@@ -14,9 +14,9 @@
 <p align="center">
   <a href="#installation">Installation</a> ·
   <a href="#quick-start">Quick start</a> ·
+  <a href="#options">Options</a> ·
   <a href="#interactive-view">Interactive view</a> ·
-  <a href="#file-formats">File formats</a> ·
-  <a href="#options">Options</a>
+  <a href="#file-formats">File formats</a>
 </p>
 
 ---
@@ -66,6 +66,24 @@ grid -c name,city data.csv   # show only some columns
 cat data.csv | grid          # read from stdin
 grid -h                      # all options
 ```
+
+## Options
+
+| Option | Meaning |
+|---|---|
+| `-view`, `-v` | interactive view |
+| `-sheet`, `-s` | sheet for xlsx/xls, name or number starting at 1 |
+| `-d` | force the CSV delimiter, `tab` for tab |
+| `-width`, `-w` | maximum line width, `0` for unlimited. Defaults to the terminal width |
+| `-yes`, `-y` | print long tables without asking |
+| `-cols`, `-c` | columns to show: names, numbers or ranges, e.g. `name,3-5` |
+| `-skip` | drop this many rows at the top, before the header |
+| `-noheader` | the first row is data, columns are named `A`, `B`, `C` |
+| `-h` | show help |
+
+Options may come before or after the file name. Without a file name, or with `-`, `grid` reads from stdin.
+
+On error, `grid` writes a message prefixed with `grid:` to stderr and exits with code 1.
 
 ## Interactive view
 
@@ -245,24 +263,6 @@ Cells appear the way Excel displays them:
 
 > [!NOTE]
 > **Not supported:** encrypted workbooks, xls from Excel 5.0/95 and older, and other formats such as `.ods` or `.xlsb`.
-
-## Options
-
-| Option | Meaning |
-|---|---|
-| `-view`, `-v` | interactive view |
-| `-sheet`, `-s` | sheet for xlsx/xls, name or number starting at 1 |
-| `-d` | force the CSV delimiter, `tab` for tab |
-| `-width`, `-w` | maximum line width, `0` for unlimited. Defaults to the terminal width |
-| `-yes`, `-y` | print long tables without asking |
-| `-cols`, `-c` | columns to show: names, numbers or ranges, e.g. `name,3-5` |
-| `-skip` | drop this many rows at the top, before the header |
-| `-noheader` | the first row is data, columns are named `A`, `B`, `C` |
-| `-h` | show help |
-
-Options may come before or after the file name. Without a file name, or with `-`, `grid` reads from stdin.
-
-On error, `grid` writes a message prefixed with `grid:` to stderr and exits with code 1.
 
 ## Building from source
 
