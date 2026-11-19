@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strconv"
 	"unicode/utf8"
 	"unsafe"
@@ -26,15 +27,16 @@ func (m *model) render(dst []byte) []byte {
 		dst = m.renderRecord(dst)
 		return m.appendStatus(dst)
 	}
-	cols, _ := m.visible(m.left)
-	f := layout.Formatter{Cols: cols, Sep: sep, Cut: true}
+	m.layoutCols(m.left)
+	f := layout.Formatter{Cols: m.vis, Sep: sep, Cut: true}
+	mark := slices.Index(m.idx, m.col)
 	width := m.gutter() - sepWidth
 
 	dst = append(dst, dim...)
 	dst = appendSpaces(dst, width)
 	dst = append(dst, sep...)
 	dst = append(dst, reset+bold...)
-	dst = f.AppendMarked(dst, from(m.header, m.left), m.col-m.left, underline, noUnder)
+	dst = f.AppendMarked(dst, m.pick(m.header), mark, underline, noUnder)
 	dst = append(dst, reset+clearEOL+"\r\n"...)
 
 	dst = append(dst, dim...)
@@ -54,10 +56,10 @@ func (m *model) render(dst []byte) []byte {
 			m.buf = m.store.Row(r, m.buf)
 			if r == m.row {
 				dst = append(dst, reverse...)
-				dst = f.AppendMarked(dst, from(m.buf, m.left), m.col-m.left, noReverse, reverse)
+				dst = f.AppendMarked(dst, m.pick(m.buf), mark, noReverse, reverse)
 				dst = append(dst, reset...)
 			} else {
-				dst = f.AppendRow(dst, from(m.buf, m.left))
+				dst = f.AppendRow(dst, m.pick(m.buf))
 			}
 		}
 		dst = append(dst, clearEOL+"\r\n"...)
@@ -94,6 +96,9 @@ func (m *model) status(b []byte) []byte {
 			b = append(append(b, ' '), m.header[m.col]...)
 		}
 	}
+	if m.frozen > 0 && !m.record {
+		b = strconv.AppendInt(append(b, "   frozen "...), int64(m.frozen), 10)
+	}
 	switch {
 	case m.err != nil:
 		b = append(append(b, "   error: "...), m.err.Error()...)
@@ -116,14 +121,20 @@ func (m *model) status(b []byte) []byte {
 		}
 		return b
 	}
-	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  Enter record  w wide  q quit"...)
+	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  Enter record  f freeze  w wide  q quit"...)
 }
 
-func from(row []string, i int) []string {
-	if i >= len(row) {
-		return nil
+// pick returns the cells of row in the columns on screen.
+func (m *model) pick(row []string) []string {
+	m.cells = m.cells[:0]
+	for _, i := range m.idx {
+		c := ""
+		if i < len(row) {
+			c = row[i]
+		}
+		m.cells = append(m.cells, c)
 	}
-	return row[i:]
+	return m.cells
 }
 
 // appendFit appends s cut or padded to exactly w columns.

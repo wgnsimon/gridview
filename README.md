@@ -123,6 +123,7 @@ The view fills the terminal and keeps the header and its rule pinned at the top.
 | `/` `?` | search forward, backward |
 | `n` `N` | next, previous match |
 | `Enter` | show the current row as a record |
+| `f` | freeze the columns up to the current one, again to unfreeze |
 | `w` | toggle full-width columns |
 | `q` `Esc` `Ctrl-C` | quit |
 
@@ -131,6 +132,8 @@ The view fills the terminal and keeps the header and its rule pinned at the top.
 **Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
 
 **Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
+
+**Freezing columns.** `f` keeps the columns up to and including the current one on the left while the others scroll, handy for an ID or name column in a wide table. The status line shows how many are frozen; another `f` unfreezes them.
 
 **Record.** `Enter` shows the current row as a list of column names and values, one per line. Long values wrap over several lines and line breaks inside a cell show as real line breaks, so nothing is cut. `↑` `↓` scroll, `←` `→` go to the previous and next row, `Esc`, `Enter` or `q` go back to the table.
 
