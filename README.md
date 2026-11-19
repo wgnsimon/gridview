@@ -131,6 +131,22 @@ curl -s https://example.com/export.csv | grid -v
 
 The format is detected from the file contents, not the extension, so a misnamed file still opens.
 
+### Header row
+
+`grid` takes the first row as the header. Exports often start with a title or a few lines of notes instead; `-skip` drops that many rows from the top, so the real header comes first:
+
+```bash
+grid -skip 3 report.csv
+```
+
+If the file has no header at all, `-noheader` keeps the first row as data and names the columns `A`, `B`, `C` like a spreadsheet:
+
+```bash
+grid -noheader measurements.csv
+```
+
+Both work for every format and can be combined. Blank lines in a CSV file don't count, blank rows in a sheet do.
+
 ### CSV
 
 Character sets are detected automatically: UTF-8 with and without BOM, UTF-16 (Excel "Unicode Text") and Windows-1252, which Excel writes in many Western European locales when saving as CSV. So accented characters look right even in old exports.
@@ -185,6 +201,8 @@ Cells appear the way Excel displays them:
 | `-d` | force the CSV delimiter, `tab` for tab |
 | `-width`, `-w` | maximum line width, `0` for unlimited. Defaults to the terminal width |
 | `-yes`, `-y` | print long tables without asking |
+| `-skip` | drop this many rows at the top, before the header |
+| `-noheader` | the first row is data, columns are named `A`, `B`, `C` |
 | `-h` | show help |
 
 Options may come before or after the file name. Without a file name, or with `-`, `grid` reads from stdin.
