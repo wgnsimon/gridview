@@ -83,6 +83,18 @@ id | name | city
 grid -w 0 book.xlsx > book.txt
 ```
 
+**Columns.** `-cols` (or `-c`) shows only the columns you list, in that order. Name them by header (case doesn't matter), by number starting at 1, or by range:
+
+```bash
+grid -c name,city customers.csv
+```
+
+```bash
+grid -c 1,4-6,9- wide.xlsx
+```
+
+`9-` means column 9 to the last. With `-noheader`, the names `A`, `B`, `C` work too. `-cols` also applies to the interactive view.
+
 **Long tables.** If a table has more than 250 rows, `grid` asks first so the terminal doesn't get flooded:
 
 ```
@@ -201,6 +213,7 @@ Cells appear the way Excel displays them:
 | `-d` | force the CSV delimiter, `tab` for tab |
 | `-width`, `-w` | maximum line width, `0` for unlimited. Defaults to the terminal width |
 | `-yes`, `-y` | print long tables without asking |
+| `-cols`, `-c` | columns to show: names, numbers or ranges, e.g. `name,3-5` |
 | `-skip` | drop this many rows at the top, before the header |
 | `-noheader` | the first row is data, columns are named `A`, `B`, `C` |
 | `-h` | show help |
