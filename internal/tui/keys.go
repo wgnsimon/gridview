@@ -19,6 +19,8 @@ const (
 	KeyEsc
 	KeyBackspace
 	KeyCtrlC
+	KeyCtrlD
+	KeyCtrlU
 )
 
 // Key is one key press; Rune is set for KeyRune.
@@ -65,6 +67,10 @@ func parseKeys(b []byte) ([]Key, []byte) {
 			keys = append(keys, Key{Code: KeyPgDn})
 		case c == 0x02:
 			keys = append(keys, Key{Code: KeyPgUp})
+		case c == 0x04:
+			keys = append(keys, Key{Code: KeyCtrlD})
+		case c == 0x15:
+			keys = append(keys, Key{Code: KeyCtrlU})
 		case c >= utf8.RuneSelf:
 			if !utf8.FullRune(b) {
 				return keys, b

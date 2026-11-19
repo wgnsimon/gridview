@@ -58,6 +58,7 @@ func TestNavigation(t *testing.T) {
 		{[]Key{{Code: KeyPgDn}}, 9, 7, 0},
 		{runes("G"), 99, 93, 0},
 		{[]Key{{Code: KeyDown}}, 99, 93, 0},
+		{runes("g"), 99, 93, 0},
 		{runes("g"), 0, 0, 0},
 		{runes("$"), 0, 0, 19},
 		{runes("h0"), 0, 0, 0},
@@ -69,6 +70,71 @@ func TestNavigation(t *testing.T) {
 		if m.row != tt.row || m.top != tt.top || m.col != tt.col {
 			t.Errorf("step %d: row %d top %d col %d, want %d %d %d", i, m.row, m.top, m.col, tt.row, tt.top, tt.col)
 		}
+	}
+}
+
+func TestViKeys(t *testing.T) {
+	m := newTestModel(100, 20, 40, 10) // page of 7 rows
+	ctrl := func(c KeyCode) []Key { return []Key{{Code: c}} }
+	tests := []struct {
+		name          string
+		keys          []Key
+		row, top, col int
+	}{
+		{"count j", runes("5j"), 5, 0, 0},
+		{"count k", runes("3k"), 2, 0, 0},
+		{"count l", runes("4l"), 2, 0, 4},
+		{"count h", runes("10h"), 2, 0, 0},
+		{"half page down", ctrl(KeyCtrlD), 5, 3, 0},
+		{"half page up", ctrl(KeyCtrlU), 2, 0, 0},
+		{"count G", runes("42G"), 41, 35, 0},
+		{"count gg", runes("7gg"), 6, 6, 0},
+		{"gg", runes("gg"), 0, 0, 0},
+		{"L", runes("L"), 6, 0, 0},
+		{"M", runes("M"), 3, 0, 0},
+		{"H", runes("H"), 0, 0, 0},
+		{"count L", runes("2L"), 5, 0, 0},
+		{"count H", runes("3H"), 2, 0, 0},
+		{"0 after count is a digit", runes("10j"), 12, 6, 0},
+		{"0 alone is first column", runes("$0"), 12, 6, 0},
+		{"esc drops count", append(runes("5"), append(ctrl(KeyEsc), runes("j")...)...), 13, 7, 0},
+		{"esc drops g", append(runes("g"), append(ctrl(KeyEsc), runes("j")...)...), 14, 8, 0},
+	}
+	for _, tt := range tests {
+		if press(m, tt.keys...) {
+			t.Fatalf("%s: quit", tt.name)
+		}
+		if m.row != tt.row || m.top != tt.top || m.col != tt.col {
+			t.Errorf("%s: row %d top %d col %d, want %d %d %d", tt.name, m.row, m.top, m.col, tt.row, tt.top, tt.col)
+		}
+	}
+	if !press(m, Key{Code: KeyEsc}) {
+		t.Error("esc without a pending count should quit")
+	}
+}
+
+func TestBackwardSearch(t *testing.T) {
+	m := newTestModel(50, 5, 60, 10)
+	press(m, runes("20G")...)
+	press(m, runes("?c3")...)
+	if !strings.Contains(string(m.status(nil)), "?c3") {
+		t.Errorf("prompt %q", string(m.status(nil)))
+	}
+	press(m, Key{Code: KeyEnter})
+	if m.row != 18 || m.col != 3 {
+		t.Fatalf("? found row %d col %d", m.row, m.col)
+	}
+	press(m, runes("n")...)
+	if m.row != 17 {
+		t.Errorf("n after ? went to row %d", m.row)
+	}
+	press(m, runes("N")...)
+	if m.row != 18 {
+		t.Errorf("N after ? went to row %d", m.row)
+	}
+	press(m, runes("3n")...)
+	if m.row != 15 {
+		t.Errorf("3n went to row %d", m.row)
 	}
 }
 

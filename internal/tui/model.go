@@ -34,7 +34,10 @@ type model struct {
 	record bool
 	recTop int
 
+	count   int  // pending count typed before a command, 0 if none
+	g       bool // pending g of gg
 	prompt  bool
+	back    bool // search backwards, started with ?
 	input   []rune
 	query   string
 	message string
@@ -60,27 +63,55 @@ func (m *model) handle(k Key) bool {
 	if m.record {
 		return m.handleRecord(k)
 	}
+	if k.Code == KeyRune && ('1' <= k.Rune && k.Rune <= '9' || k.Rune == '0' && m.count > 0) {
+		m.count = min(m.count*10+int(k.Rune-'0'), maxCount)
+		m.g = false
+		return false
+	}
+	n, counted, g := max(1, m.count), m.count > 0, m.g
+	m.count, m.g = 0, false
+	half := max(1, m.page()/2)
 	switch {
+	case k.Code == KeyEsc && (counted || g):
+		// Esc drops a pending count or g, like in vi.
 	case k.Code == KeyCtrlC || k.Code == KeyEsc || k.Rune == 'q':
 		return true
 	case k.Code == KeyDown || k.Rune == 'j':
-		m.row++
+		m.row += n
 	case k.Code == KeyUp || k.Rune == 'k':
-		m.row--
+		m.row -= n
 	case k.Code == KeyPgDn || k.Rune == ' ':
-		m.row += m.page()
-		m.top += m.page()
+		m.row += n * m.page()
+		m.top += n * m.page()
 	case k.Code == KeyPgUp || k.Rune == 'b':
-		m.row -= m.page()
-		m.top -= m.page()
-	case k.Code == KeyHome || k.Rune == 'g':
-		m.row = 0
+		m.row -= n * m.page()
+		m.top -= n * m.page()
+	case k.Code == KeyCtrlD:
+		m.row += n * half
+		m.top += n * half
+	case k.Code == KeyCtrlU:
+		m.row -= n * half
+		m.top -= n * half
+	case k.Rune == 'g' && !g:
+		if counted {
+			m.count = n
+		}
+		m.g = true
+		return false
+	case k.Code == KeyHome || k.Rune == 'g' || k.Rune == 'G' && counted:
+		m.row = n - 1
 	case k.Code == KeyEnd || k.Rune == 'G':
 		m.row = m.rows - 1
+	case k.Rune == 'H':
+		m.row = m.top + n - 1
+	case k.Rune == 'M':
+		m.row = m.top + (m.shown()-1)/2
+	case k.Rune == 'L':
+		m.row = max(m.top, m.top+m.shown()-n)
 	case k.Code == KeyRight || k.Rune == 'l':
-		m.col++
+		m.col += n
 	case k.Code == KeyLeft || k.Rune == 'h':
-		m.col--
+		m.col -= n
 	case k.Rune == '0' || k.Rune == '^':
 		m.col = 0
 	case k.Rune == '$':
@@ -89,16 +120,37 @@ func (m *model) handle(k Key) bool {
 		m.openRecord()
 	case k.Rune == 'w':
 		m.wide = !m.wide
-	case k.Rune == '/':
+	case k.Rune == '/' || k.Rune == '?':
 		m.prompt = true
+		m.back = k.Rune == '?'
 		m.input = m.input[:0]
 	case k.Rune == 'n':
-		m.find(1)
+		m.repeat(n, 1)
 	case k.Rune == 'N':
-		m.find(-1)
+		m.repeat(n, -1)
 	}
 	m.clamp()
 	return false
+}
+
+// maxCount caps a typed count so arithmetic with it cannot overflow.
+const maxCount = 1_000_000
+
+// shown is the number of data rows on screen from top.
+func (m *model) shown() int {
+	return max(1, min(m.page(), m.rows-m.top))
+}
+
+// repeat jumps to the nth match, dir 1 in the search direction, -1 against it.
+func (m *model) repeat(n, dir int) {
+	if m.back {
+		dir = -dir
+	}
+	for range min(n, max(1, m.rows)) {
+		if !m.find(dir) {
+			return
+		}
+	}
 }
 
 func (m *model) edit(k Key) {
@@ -106,7 +158,7 @@ func (m *model) edit(k Key) {
 	case KeyEnter:
 		m.prompt = false
 		m.query = string(m.input)
-		m.find(1)
+		m.repeat(1, 1)
 		m.clamp()
 	case KeyEsc, KeyCtrlC:
 		m.prompt = false
@@ -119,9 +171,9 @@ func (m *model) edit(k Key) {
 	}
 }
 
-func (m *model) find(dir int) {
+func (m *model) find(dir int) bool {
 	if m.query == "" || m.rows == 0 {
-		return
+		return false
 	}
 	q := strings.ToLower(m.query)
 	ascii := isASCII(q)
@@ -141,11 +193,12 @@ func (m *model) find(dir int) {
 			}
 			if hit {
 				m.row, m.col = r, c
-				return
+				return true
 			}
 		}
 	}
 	m.message = "not found: " + m.query
+	return false
 }
 
 // containsFold reports whether s contains the lower case q, ignoring case.
