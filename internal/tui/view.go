@@ -22,6 +22,10 @@ const (
 // render appends one full frame to dst.
 func (m *model) render(dst []byte) []byte {
 	dst = append(dst, "\x1b[?2026h\x1b[H"...)
+	if m.record {
+		dst = m.renderRecord(dst)
+		return m.appendStatus(dst)
+	}
 	cols, _ := m.visible(m.left)
 	f := layout.Formatter{Cols: cols, Sep: sep, Cut: true}
 	width := m.gutter() - sepWidth
@@ -58,7 +62,10 @@ func (m *model) render(dst []byte) []byte {
 		}
 		dst = append(dst, clearEOL+"\r\n"...)
 	}
+	return m.appendStatus(dst)
+}
 
+func (m *model) appendStatus(dst []byte) []byte {
 	dst = append(dst, reverse...)
 	m.line = m.status(m.line[:0])
 	dst = appendFit(dst, unsafe.String(unsafe.SliceData(m.line), len(m.line)), m.width)
@@ -76,7 +83,7 @@ func (m *model) status(b []byte) []byte {
 	b = append(append(append(b, ' '), m.title...), "   row "...)
 	b = strconv.AppendInt(b, int64(min(m.row+1, m.rows)), 10)
 	b = strconv.AppendInt(append(b, '/'), int64(m.rows), 10)
-	if len(m.cols) > 0 {
+	if len(m.cols) > 0 && !m.record {
 		b = strconv.AppendInt(append(b, "   col "...), int64(m.col+1), 10)
 		b = strconv.AppendInt(append(b, '/'), int64(len(m.cols)), 10)
 		if m.col < len(m.header) && m.header[m.col] != "" {
@@ -92,7 +99,10 @@ func (m *model) status(b []byte) []byte {
 	if m.message != "" {
 		return append(append(b, "   "...), m.message...)
 	}
-	return append(b, "   ↑↓←→ PgUp PgDn g G  / search  n N  w wide  q quit"...)
+	if m.record {
+		return append(b, "   record  ←→ row  ↑↓ scroll  Esc back"...)
+	}
+	return append(b, "   ↑↓←→ PgUp PgDn g G  / search  n N  Enter record  w wide  q quit"...)
 }
 
 func from(row []string, i int) []string {

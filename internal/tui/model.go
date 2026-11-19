@@ -31,6 +31,9 @@ type model struct {
 	left, col     int
 	wide          bool
 
+	record bool
+	recTop int
+
 	prompt  bool
 	input   []rune
 	query   string
@@ -53,6 +56,9 @@ func (m *model) handle(k Key) bool {
 	if m.prompt {
 		m.edit(k)
 		return false
+	}
+	if m.record {
+		return m.handleRecord(k)
 	}
 	switch {
 	case k.Code == KeyCtrlC || k.Code == KeyEsc || k.Rune == 'q':
@@ -79,6 +85,8 @@ func (m *model) handle(k Key) bool {
 		m.col = 0
 	case k.Rune == '$':
 		m.col = len(m.cols) - 1
+	case k.Code == KeyEnter:
+		m.openRecord()
 	case k.Rune == 'w':
 		m.wide = !m.wide
 	case k.Rune == '/':
