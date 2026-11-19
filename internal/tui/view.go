@@ -74,7 +74,11 @@ func (m *model) appendStatus(dst []byte) []byte {
 
 func (m *model) status(b []byte) []byte {
 	if m.prompt {
-		b = append(b, '/')
+		if m.back {
+			b = append(b, '?')
+		} else {
+			b = append(b, '/')
+		}
 		for _, r := range m.input {
 			b = utf8.AppendRune(b, r)
 		}
@@ -102,7 +106,17 @@ func (m *model) status(b []byte) []byte {
 	if m.record {
 		return append(b, "   record  ←→ row  ↑↓ scroll  Esc back"...)
 	}
-	return append(b, "   ↑↓←→ PgUp PgDn g G  / search  n N  Enter record  w wide  q quit"...)
+	if m.count > 0 || m.g {
+		b = append(b, "   "...)
+		if m.count > 0 {
+			b = strconv.AppendInt(b, int64(m.count), 10)
+		}
+		if m.g {
+			b = append(b, 'g')
+		}
+		return b
+	}
+	return append(b, "   hjkl ^D ^U gg G  / ? search  n N  Enter record  w wide  q quit"...)
 }
 
 func from(row []string, i int) []string {

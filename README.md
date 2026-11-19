@@ -115,16 +115,20 @@ The view fills the terminal and keeps the header and its rule pinned at the top.
 |---|---|
 | `↑` `↓` or `k` `j` | one row up, down |
 | `←` `→` or `h` `l` | one column left, right |
-| `PgUp` `PgDn` or `b` `Space` | one page up, down |
-| `Home` `End` or `g` `G` | first, last row |
+| `PgUp` `PgDn` or `b` `Space` or `Ctrl-B` `Ctrl-F` | one page up, down |
+| `Ctrl-U` `Ctrl-D` | half a page up, down |
+| `Home` `End` or `gg` `G` | first, last row |
+| `H` `M` `L` | top, middle, bottom row on screen |
 | `0` `$` | first, last column |
-| `/` | search |
+| `/` `?` | search forward, backward |
 | `n` `N` | next, previous match |
 | `Enter` | show the current row as a record |
 | `w` | toggle full-width columns |
 | `q` `Esc` `Ctrl-C` | quit |
 
-**Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. Case doesn't matter, and all cells are searched. After the last match it wraps around to the top. `Esc` cancels the input.
+**Counts.** Like in vi, a number before a key repeats it: `5j` moves five rows down, `3l` three columns right. `42G` or `42gg` jumps to row 42, `3n` to the third match. `Esc` drops a count you typed.
+
+**Search.** `/` opens an input line at the bottom. Type the search term and press `Enter` to jump. `?` searches backwards, and `n` then keeps going in that direction. Case doesn't matter, and all cells are searched. At the end it wraps around. `Esc` cancels the input.
 
 **Wide columns.** Normally every column is cut to at most 40 characters so more fit side by side. `w` shows them at full width, a second `w` switches back.
 
