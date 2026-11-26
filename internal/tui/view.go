@@ -152,13 +152,11 @@ func (m *model) pick(row []string) []string {
 	return m.cells
 }
 
-// appendFit appends s cut or padded to exactly w columns.
+// appendFit appends s cut or padded to exactly w columns. Control
+// characters are drawn as in cells, so they cannot move the cursor.
 func appendFit(dst []byte, s string, w int) []byte {
-	if layout.Width(s) > w {
-		f := layout.Formatter{Cols: []layout.Column{{Width: w}}, Cut: true}
-		return f.AppendRow(dst, []string{s})
-	}
-	dst = append(dst, s...)
+	f := layout.Formatter{Cols: []layout.Column{{Width: w}}, Cut: true}
+	dst = f.AppendRow(dst, []string{s})
 	return appendSpaces(dst, w-layout.Width(s))
 }
 
