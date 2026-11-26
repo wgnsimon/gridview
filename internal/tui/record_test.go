@@ -89,3 +89,22 @@ func TestRecordScroll(t *testing.T) {
 func screen(m *model) []string {
 	return strings.Split(ansi.ReplaceAllString(string(m.render(nil)), ""), "\r\n")
 }
+
+func TestControlCharsInHeader(t *testing.T) {
+	m := newRecordModel()
+	m.width = 200
+	m.header[1] = "Umsatz\n2024\x1b[31m"
+	m.col = 1
+	for _, record := range []bool{false, true} {
+		if record {
+			m.openRecord()
+		}
+		frame := string(m.render(nil))
+		if n := strings.Count(frame, "\n"); n != m.height-1 {
+			t.Errorf("record %v: %d line breaks, want %d", record, n, m.height-1)
+		}
+		if strings.Contains(frame, "\x1b[31m") {
+			t.Errorf("record %v: escape sequence from the header reached the terminal", record)
+		}
+	}
+}
